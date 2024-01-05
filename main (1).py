@@ -1,8 +1,8 @@
-import openpyxl
+#import openpyxl
 import streamlit as st
 import pandas as pd
 import os
-from openpyxl import load_workbook
+#from openpyxl import load_workbook
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
