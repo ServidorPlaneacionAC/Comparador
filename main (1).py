@@ -103,13 +103,13 @@ if archivo_base and archivo_comparar:
         # Botón para descargar toda la información en un solo archivo Excel
         if st.button("Descargar información"):
             # Cambiar la ruta de descargas al directorio de descargas del usuario
-            ruta_descargas = os.path.join(os.path.expanduser("~"), "Downloads")
+            #ruta_descargas = os.path.join(os.path.expanduser("~"), "Downloads")
 
             # Asegurarse de que la carpeta de descargas exista, si no, crearla
-            if not os.path.exists(ruta_descargas):
-                os.makedirs(ruta_descargas)
+            #if not os.path.exists(ruta_descargas):
+                #os.makedirs(ruta_descargas)
 
-            ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
+            #ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
 
             with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
