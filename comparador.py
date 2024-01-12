@@ -35,7 +35,7 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base)  # Ya no es necesario especificar el motor aquí
+    df_base = pd.read_excel(archivo_base, engine='xlrd')  # Usa el motor 'xlrd' solo para la lectura
     df_comparar = pd.read_excel(archivo_comparar)
 
     # Verificar si los DataFrames son idénticos
