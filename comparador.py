@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import xlsxwriter  # Agrega la importación de xlsxwriter
+import xlsxwriter  
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
