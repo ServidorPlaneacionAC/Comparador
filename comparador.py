@@ -1,4 +1,3 @@
-import xlrd  # Importa xlrd en lugar de openpyxl
 import streamlit as st
 import pandas as pd
 import os
@@ -36,8 +35,8 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base, engine='xlrd')  # Usa xlrd como motor de lectura
-    df_comparar = pd.read_excel(archivo_comparar, engine='xlrd')  # Usa xlrd como motor de lectura
+    df_base = pd.read_excel(archivo_base)
+    df_comparar = pd.read_excel(archivo_comparar)
 
     # Verificar si los DataFrames son idénticos
     if df_base.equals(df_comparar):
@@ -94,30 +93,12 @@ if archivo_base and archivo_comparar:
 
             ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
 
-            with pd.ExcelWriter(ruta_completa, engine='xlrd') as writer:  # Usa xlrd como motor de escritura
+            # Escribir el DataFrame en un archivo Excel
+            with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
                 df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
                 df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
                 df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
                 df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
 
-            # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
-            libro_trabajo = xlrd.open_workbook(ruta_completa)  # Usa xlrd para abrir el libro de trabajo
-            hoja_con_diferencias = libro_trabajo.sheet_by_name('Con Diferencias')
-
-            # Obtener el formato
-            formato_rojo = xlrd.formatting.Pattern()
-            formato_rojo.pattern_fore_colour = xlrd.formatting.colour_map['red']
-            formato_amarillo = xlrd.formatting.Pattern()
-            formato_amarillo.pattern_fore_colour = xlrd.formatting.colour_map['yellow']
-
-            # Aplicar formato a las celdas en la hoja 'Con Diferencias'
-            for fila_idx in range(1, hoja_con_diferencias.nrows):  # Comienza desde la segunda fila
-                for col_idx in range(hoja_con_diferencias.ncols):
-                    celda_valor = hoja_con_diferencias.cell_value(fila_idx, col_idx)
-                    if '*' in str(celda_valor):
-                        hoja_con_diferencias.put_cell(fila_idx, col_idx, xlrd.XL_CELL_TEXT, celda_valor, formato_rojo)
-
-            # Guardar los cambios y cerrar el libro de trabajo
-            libro_trabajo.release_resources()
             st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
