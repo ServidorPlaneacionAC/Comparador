@@ -1,18 +1,14 @@
-import openpyxl
 import streamlit as st
 import pandas as pd
-#import os
-#from openpyxl import load_workbook
+import io
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
 
-'''
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar):
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[
-        lambda x: x['_merge'] == 'left_only'].drop(
+    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
         columns=['_merge'])
 
     # Obtener el DataFrame con filas que tienen diferencias
@@ -22,16 +18,12 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
     for col in df_comparar.columns:
         # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
         if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(
-                x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
         else:
-            df_diferencias[col] = df_diferencias.apply(
-                lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col],
-                axis=1)
+            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
 
-'''
 # Titulo
 st.title("Comparador de Datos Maestros")
 
@@ -40,9 +32,6 @@ archivo_base = st.file_uploader("Cargar archivo base (base de datos)", type=["xl
 
 # Para subir el archivo a comparar en Excel
 archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
-
-# Variable para almacenar los índices de las filas con diferencias
-indices_diferencias = []
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
@@ -71,27 +60,20 @@ if archivo_base and archivo_comparar:
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
-            # Obtener los índices de las filas con diferencias
-            indices_diferencias = df_diferencias.index
-
             # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = df_base[df_base.index.isin(indices_diferencias)].copy()
+            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
 
             # Marcar las celdas con un asterisco solo donde la información no es igual al archivo a comparar
             for col in df_base.columns:
                 if pd.api.types.is_numeric_dtype(df_base[col]) and pd.api.types.is_numeric_dtype(df_comparar[col]):
-                    df_base_diferencias[col] = df_base_diferencias.apply(
-                        lambda x: f"{x[col]}*" if x.name in indices_diferencias and abs(
-                            x[col] - df_comparar.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+                    df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and abs(x[col] - df_comparar.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
                 else:
-                    df_base_diferencias[col] = df_base_diferencias.apply(
-                        lambda x: f"{x[col]}*" if x.name in indices_diferencias and x[col] != df_comparar.at[
-                            x.name, col] else x[col], axis=1)
+                    df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and x[col] != df_comparar.at[x.name, col] else x[col], axis=1)
 
             st.dataframe(df_base_diferencias)
 
         # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
-        if st.button("Mostrar informacion nueva en comparar"):
+        if st.button("Mostrar informacion nueva en comparar "):
             st.write("Informacion en el archivo a comparar que no está en el archivo base:")
             st.dataframe(df_filas_en_comparar_no_en_base)
 
@@ -102,40 +84,23 @@ if archivo_base and archivo_comparar:
 
         # Botón para descargar toda la información en un solo archivo Excel
         if st.button("Descargar información"):
-            # Cambiar la ruta de descargas al directorio de descargas del usuario
-            #ruta_descargas = os.path.join(os.path.expanduser("~"), "Downloads")
+            # Crear un objeto BytesIO para almacenar el archivo Excel
+            excel_buffer = io.BytesIO()
 
-            # Asegurarse de que la carpeta de descargas exista, si no, crearla
-            #if not os.path.exists(ruta_descargas):
-                #os.makedirs(ruta_descargas)
-
-            #ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
-
-            with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
                 df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
                 df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
                 df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
-                df_base[df_base.index.isin(indices_diferencias)].to_excel(writer, sheet_name='Archivo Base',
-                                                                          index=False)  # Agregar hoja con el archivo base
+                df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
 
-            # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
-            libro_trabajo = load_workbook(ruta_completa)
-            hoja_con_diferencias = libro_trabajo['Con Diferencias']
+            # Obtener el contenido del archivo Excel desde el objeto BytesIO
+            excel_data = excel_buffer.getvalue()
 
-            # Obtener el formato
-            formato_rojo = openpyxl.styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-
-            # Aplicar formato a las celdas en la hoja 'Con Diferencias'
-            for fila in hoja_con_diferencias.iter_rows(min_row=2, max_row=hoja_con_diferencias.max_row, min_col=1,
-                                                       max_col=hoja_con_diferencias.max_column):
-                for celda in fila:
-                    if '*' in str(celda.value):
-                        celda.fill = formato_rojo
-
-            # Guardar los cambios y cerrar el libro de trabajo
-            libro_trabajo.save(ruta_completa)
-            libro_trabajo.close()
-
-            st.success(
-                f"Archivo 'comparacion_datos_maestros.xlsx' descargado en el directorio de descargas del usuario.")
+            # Descargar el archivo Excel
+            st.download_button(
+                label="Descargar información",
+                data=excel_data,
+                file_name="comparacion_datos_maestros.xlsx",
+                key="comparacion_datos_maestros"
+            )
