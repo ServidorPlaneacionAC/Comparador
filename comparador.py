@@ -1,6 +1,6 @@
-import pandas as pd
 import streamlit as st
-import xlsxwriter  
+import pandas as pd
+import os
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
@@ -35,8 +35,8 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base, engine='xlsxwriter')
-    df_comparar = pd.read_excel(archivo_comparar, engine='xlsxwriter')
+    df_base = pd.read_excel(archivo_base)
+    df_comparar = pd.read_excel(archivo_comparar)
 
     # Verificar si los DataFrames son idénticos
     if df_base.equals(df_comparar):
@@ -55,7 +55,7 @@ if archivo_base and archivo_comparar:
 
         # Mostrar el DataFrame con filas que tienen diferencias
         st.write("Informacion que tiene diferencias:")
-        st.dataframe(df_diferencias.style.applymap(lambda x: 'background-color: red' if '*' in str(x) else ''))
+        st.dataframe(df_diferencias)
 
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
@@ -70,13 +70,34 @@ if archivo_base and archivo_comparar:
                 else:
                     df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and x[col] != df_comparar.at[x.name, col] else x[col], axis=1)
 
-            st.dataframe(df_base_diferencias.style.applymap(lambda x: 'background-color: red' if '*' in str(x) else ''))
+            st.dataframe(df_base_diferencias)
 
-        # Mostrar las filas que faltan en el archivo a comparar
-        st.write("Filas faltantes en el archivo a comparar:")
-        st.dataframe(df_faltantes)
+        # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
+        if st.button("Mostrar informacion nueva en comparar "):
+            st.write("Informacion en el archivo a comparar que no está en el archivo base:")
+            st.dataframe(df_filas_en_comparar_no_en_base)
 
-        # Mostrar las filas en el archivo a comparar que no están en el archivo base
-        st.write("Filas en el archivo a comparar que no están en el archivo base:")
-        st.dataframe(df_filas_en_comparar_no_en_base)
+        # Botón para mostrar la información faltante en comparación al archivo base
+        if st.button("Mostrar información faltante en comparación al archivo base"):
+            st.write("Información faltante en comparación al archivo base:")
+            st.dataframe(df_faltantes)
 
+        # Botón para descargar toda la información en un solo archivo Excel
+        if st.button("Descargar información"):
+            # Cambiar la ruta de descargas a D:\acwagavilan\Desktop\Joy
+            ruta_descargas = os.path.join("D:", "acwagavilan", "Desktop", "Joy")
+
+            # Asegurarse de que la carpeta de descargas exista, si no, crearla
+            if not os.path.exists(ruta_descargas):
+                os.makedirs(ruta_descargas)
+
+            ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
+
+            with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
+                # Escribir cada DataFrame en una pestaña diferente
+                df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
+                df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
+                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
+                df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
+
+            st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
