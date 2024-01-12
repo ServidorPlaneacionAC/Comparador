@@ -1,6 +1,7 @@
+import xlrd  # Importa xlrd en lugar de openpyxl
 import streamlit as st
 import pandas as pd
-import io
+import os
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
@@ -35,8 +36,8 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base)
-    df_comparar = pd.read_excel(archivo_comparar)
+    df_base = pd.read_excel(archivo_base, engine='xlrd')  # Usa xlrd como motor de lectura
+    df_comparar = pd.read_excel(archivo_comparar, engine='xlrd')  # Usa xlrd como motor de lectura
 
     # Verificar si los DataFrames son idénticos
     if df_base.equals(df_comparar):
@@ -84,23 +85,39 @@ if archivo_base and archivo_comparar:
 
         # Botón para descargar toda la información en un solo archivo Excel
         if st.button("Descargar información"):
-            # Crear un objeto BytesIO para almacenar el archivo Excel
-            excel_buffer = io.BytesIO()
+            # Cambiar la ruta de descargas a D:\acwagavilan\Desktop\Joy
+            ruta_descargas = os.path.join("D:", "acwagavilan", "Desktop", "Joy")
 
-            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            # Asegurarse de que la carpeta de descargas exista, si no, crearla
+            if not os.path.exists(ruta_descargas):
+                os.makedirs(ruta_descargas)
+
+            ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
+
+            with pd.ExcelWriter(ruta_completa, engine='xlrd') as writer:  # Usa xlrd como motor de escritura
                 # Escribir cada DataFrame en una pestaña diferente
                 df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
                 df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
                 df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
                 df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
 
-            # Obtener el contenido del archivo Excel desde el objeto BytesIO
-            excel_data = excel_buffer.getvalue()
+            # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
+            libro_trabajo = xlrd.open_workbook(ruta_completa)  # Usa xlrd para abrir el libro de trabajo
+            hoja_con_diferencias = libro_trabajo.sheet_by_name('Con Diferencias')
 
-            # Descargar el archivo Excel
-            st.download_button(
-                label="Descargar información",
-                data=excel_data,
-                file_name="comparacion_datos_maestros.xlsx",
-                key="comparacion_datos_maestros"
-            )
+            # Obtener el formato
+            formato_rojo = xlrd.formatting.Pattern()
+            formato_rojo.pattern_fore_colour = xlrd.formatting.colour_map['red']
+            formato_amarillo = xlrd.formatting.Pattern()
+            formato_amarillo.pattern_fore_colour = xlrd.formatting.colour_map['yellow']
+
+            # Aplicar formato a las celdas en la hoja 'Con Diferencias'
+            for fila_idx in range(1, hoja_con_diferencias.nrows):  # Comienza desde la segunda fila
+                for col_idx in range(hoja_con_diferencias.ncols):
+                    celda_valor = hoja_con_diferencias.cell_value(fila_idx, col_idx)
+                    if '*' in str(celda_valor):
+                        hoja_con_diferencias.put_cell(fila_idx, col_idx, xlrd.XL_CELL_TEXT, celda_valor, formato_rojo)
+
+            # Guardar los cambios y cerrar el libro de trabajo
+            libro_trabajo.release_resources()
+            st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
