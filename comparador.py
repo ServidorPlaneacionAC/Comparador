@@ -1,5 +1,5 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import os
 
 # Tolerancia para la comparación de números decimales
@@ -35,7 +35,7 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base, engine='xlrd')  # Usa el motor 'xlrd' solo para la lectura
+    df_base = pd.read_excel(archivo_base)  # Deja que pandas elija el motor automáticamente
     df_comparar = pd.read_excel(archivo_comparar)
 
     # Verificar si los DataFrames son idénticos
@@ -102,20 +102,29 @@ if archivo_base and archivo_comparar:
 
             # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
             libro_trabajo = pd.ExcelFile(ruta_completa)
-            hoja_con_diferencias = libro_trabajo.parse('Con Diferencias')
+            hoja_diferencias = libro_trabajo.parse('Con Diferencias')
 
-            # Obtener el formato
-            formato_rojo = pd.ExcelFormatter(start_color="FF0000", end_color="FF0000", fill_type="solid")
-            formato_amarillo = pd.ExcelFormatter(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+            # Crear un formato de resaltado para las celdas que contienen un asterisco
+            formato_resaltado = libro_trabajo.book.add_format({'bg_color': 'red'})
 
-            # Aplicar formato a las celdas en la hoja 'Con Diferencias'
-            for fila in hoja_con_diferencias.iter_rows(min_row=2, max_row=hoja_con_diferencias.max_row, min_col=1, max_col=hoja_con_diferencias.max_column):
-                for celda in fila:
-                    if '*' in str(celda.value):
-                        celda.fill = formato_rojo
+            # Obtener el objeto de la hoja de trabajo
+            hoja_objeto = libro_trabajo.book.sheet_by_name('Con Diferencias')
 
-            # Guardar los cambios y cerrar el libro de trabajo
-            libro_trabajo.to_excel(ruta_completa, index=False)
-            libro_trabajo.close()
+            # Obtener el objeto de la hoja de trabajo para la primera hoja
+            hoja_objeto = libro_trabajo.book.sheet_by_index(0)
 
-            st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
+            # Obtener el índice de la columna que contiene diferencias
+            col_index = hoja_objeto.row(0).index(b'*'.encode())
+
+            # Obtener el número de filas en la hoja
+            num_filas = hoja_objeto.nrows
+
+            # Iterar sobre las filas y resaltar las celdas que contienen un asterisco
+            for fila_index in range(1, num_filas):
+                hoja_diferencias.iloc[fila_index - 1:fila_index, :].style.applymap(lambda x: 'background-color: red' if '*' in str(x) else '')
+
+            # Guardar el formato
+            libro_trabajo.save()
+
+            # Mostrar en Streamlit el enlace para descargar el archivo Excel
+            st.success(f"La comparación se ha guardado en un archivo Excel. Puedes descargarlo [aquí]({ruta_completa}).")
