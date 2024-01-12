@@ -1,5 +1,5 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 import os
 
 # Tolerancia para la comparación de números decimales
@@ -93,12 +93,29 @@ if archivo_base and archivo_comparar:
 
             ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
 
-            # Escribir el DataFrame en un archivo Excel
             with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
                 df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
                 df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
                 df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
                 df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
+
+            # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
+            libro_trabajo = pd.ExcelFile(ruta_completa)
+            hoja_con_diferencias = libro_trabajo.parse('Con Diferencias')
+
+            # Obtener el formato
+            formato_rojo = pd.ExcelFormatter(start_color="FF0000", end_color="FF0000", fill_type="solid")
+            formato_amarillo = pd.ExcelFormatter(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
+            # Aplicar formato a las celdas en la hoja 'Con Diferencias'
+            for fila in hoja_con_diferencias.iter_rows(min_row=2, max_row=hoja_con_diferencias.max_row, min_col=1, max_col=hoja_con_diferencias.max_column):
+                for celda in fila:
+                    if '*' in str(celda.value):
+                        celda.fill = formato_rojo
+
+            # Guardar los cambios y cerrar el libro de trabajo
+            libro_trabajo.to_excel(ruta_completa, index=False)
+            libro_trabajo.close()
 
             st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
