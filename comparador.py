@@ -1,6 +1,6 @@
-import streamlit as st
 import pandas as pd
-import os
+import streamlit as st
+import xlsxwriter  # Agrega la importación de xlsxwriter
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
@@ -35,8 +35,8 @@ archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     # Cargar los archivos
-    df_base = pd.read_excel(archivo_base)  # Deja que pandas elija el motor automáticamente
-    df_comparar = pd.read_excel(archivo_comparar)
+    df_base = pd.read_excel(archivo_base, engine='xlsxwriter')
+    df_comparar = pd.read_excel(archivo_comparar, engine='xlsxwriter')
 
     # Verificar si los DataFrames son idénticos
     if df_base.equals(df_comparar):
@@ -70,61 +70,12 @@ if archivo_base and archivo_comparar:
                 else:
                     df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and x[col] != df_comparar.at[x.name, col] else x[col], axis=1)
 
-            st.dataframe(df_base_diferencias)
+            st.dataframe(df_base_diferencias.style.applymap(lambda x: 'background-color: red' if '*' in str(x) else ''))
 
-        # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
-        if st.button("Mostrar informacion nueva en comparar "):
-            st.write("Informacion en el archivo a comparar que no está en el archivo base:")
-            st.dataframe(df_filas_en_comparar_no_en_base)
+        # Mostrar las filas que faltan en el archivo a comparar
+        st.write("Filas faltantes en el archivo a comparar:")
+        st.dataframe(df_faltantes)
 
-        # Botón para mostrar la información faltante en comparación al archivo base
-        if st.button("Mostrar información faltante en comparación al archivo base"):
-            st.write("Información faltante en comparación al archivo base:")
-            st.dataframe(df_faltantes)
-
-        # Botón para descargar toda la información en un solo archivo Excel
-        if st.button("Descargar información"):
-            # Cambiar la ruta de descargas a D:\acwagavilan\Desktop\Joy
-            ruta_descargas = os.path.join("D:", "acwagavilan", "Desktop", "Joy")
-
-            # Asegurarse de que la carpeta de descargas exista, si no, crearla
-            if not os.path.exists(ruta_descargas):
-                os.makedirs(ruta_descargas)
-
-            ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
-
-            with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
-                # Escribir cada DataFrame en una pestaña diferente
-                df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
-                df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
-                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
-                df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
-
-            # Abrir el libro de trabajo y obtener la hoja de trabajo 'Con Diferencias'
-            libro_trabajo = pd.ExcelFile(ruta_completa)
-            hoja_diferencias = libro_trabajo.parse('Con Diferencias')
-
-            # Crear un formato de resaltado para las celdas que contienen un asterisco
-            formato_resaltado = libro_trabajo.book.add_format({'bg_color': 'red'})
-
-            # Obtener el objeto de la hoja de trabajo
-            hoja_objeto = libro_trabajo.book.sheet_by_name('Con Diferencias')
-
-            # Obtener el objeto de la hoja de trabajo para la primera hoja
-            hoja_objeto = libro_trabajo.book.sheet_by_index(0)
-
-            # Obtener el índice de la columna que contiene diferencias
-            col_index = hoja_objeto.row(0).index(b'*'.encode())
-
-            # Obtener el número de filas en la hoja
-            num_filas = hoja_objeto.nrows
-
-            # Iterar sobre las filas y resaltar las celdas que contienen un asterisco
-            for fila_index in range(1, num_filas):
-                hoja_diferencias.iloc[fila_index - 1:fila_index, :].style.applymap(lambda x: 'background-color: red' if '*' in str(x) else '')
-
-            # Guardar el formato
-            libro_trabajo.save()
-
-            # Mostrar en Streamlit el enlace para descargar el archivo Excel
-            st.success(f"La comparación se ha guardado en un archivo Excel. Puedes descargarlo [aquí]({ruta_completa}).")
+        # Mostrar las filas en el archivo a comparar que no están en el archivo base
+        st.write("Filas en el archivo a comparar que no están en el archivo base:")
+        st.dataframe(df_filas_en_comparar_no_en_base)
