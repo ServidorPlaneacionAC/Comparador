@@ -79,3 +79,4 @@ if archivo_base and archivo_comparar:
         # Mostrar las filas en el archivo a comparar que no están en el archivo base
         st.write("Filas en el archivo a comparar que no están en el archivo base:")
         st.dataframe(df_filas_en_comparar_no_en_base)
+
