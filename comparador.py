@@ -55,7 +55,7 @@ if archivo_base and archivo_comparar:
 
         # Mostrar el DataFrame con filas que tienen diferencias
         st.write("Informacion que tiene diferencias:")
-        st.dataframe(df_diferencias)
+        st.dataframe(df_diferencias.style.applymap(lambda x: 'background-color: red' if '*' in str(x) else ''))
 
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
@@ -93,11 +93,7 @@ if archivo_base and archivo_comparar:
 
             ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
 
-            with pd.ExcelWriter(ruta_completa, engine='xlsxwriter') as writer:
-                # Escribir cada DataFrame en una pestaña diferente
-                df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
-                df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
-                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
-                df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
+            # Escribir el DataFrame con filas que tienen diferencias
+            df_diferencias.to_excel(ruta_completa, sheet_name='Con Diferencias', index=False)
 
             st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
