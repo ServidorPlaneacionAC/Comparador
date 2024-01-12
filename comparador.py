@@ -81,23 +81,3 @@ if archivo_base and archivo_comparar:
         if st.button("Mostrar información faltante en comparación al archivo base"):
             st.write("Información faltante en comparación al archivo base:")
             st.dataframe(df_faltantes)
-
-        # Botón para descargar toda la información en un solo archivo Excel
-        if st.button("Descargar información"):
-            # Cambiar la ruta de descargas a D:\acwagavilan\Desktop\Joy
-            ruta_descargas = os.path.join("D:", "acwagavilan", "Desktop", "Joy")
-
-            # Asegurarse de que la carpeta de descargas exista, si no, crearla
-            if not os.path.exists(ruta_descargas):
-                os.makedirs(ruta_descargas)
-
-            ruta_completa = os.path.join(ruta_descargas, "comparacion_datos_maestros.xlsx")
-
-            with pd.ExcelWriter(ruta_completa) as writer:
-                # Escribir cada DataFrame en una pestaña diferente
-                df_diferencias.to_excel(writer, sheet_name='Con Diferencias', index=False)
-                df_faltantes.to_excel(writer, sheet_name='Faltantes en Base', index=False)
-                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Nuevas en Comparar', index=False)
-                df_base[df_base.index.isin(df_diferencias.index)].to_excel(writer, sheet_name='Archivo Base', index=False)  # Agregar hoja con el archivo base
-
-            st.success(f"Archivo 'comparacion_datos_maestros.xlsx' descargado en la carpeta 'Joy' en D:\\acwagavilan\\Desktop.")
