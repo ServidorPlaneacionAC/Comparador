@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import openpyxl
 #import os
 '''
 # Tolerancia para la comparación de números decimales
