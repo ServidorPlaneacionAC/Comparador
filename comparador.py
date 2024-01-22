@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import os
-
+#import os
+'''
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
 
@@ -23,7 +23,7 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
             df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
-
+'''
 # Titulo
 st.title("Comparador de Datos Maestros")
 
