@@ -5,7 +5,7 @@ import openpyxl
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
-'''
+
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar):
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
@@ -24,7 +24,7 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
             df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
-'''
+
 # Titulo
 st.title("Comparador de Datos Maestros")
 
