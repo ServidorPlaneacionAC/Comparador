@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 #import os
-'''
+
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
-
+'''
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar):
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
