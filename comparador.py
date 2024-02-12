@@ -21,7 +21,7 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
         if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
             df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
         else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and str(x[col]) != str(df_base.at[x.name, col]) else x[col], axis=1)
+            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
 
@@ -31,16 +31,6 @@ def resaltar_diferencias(val):
         return 'background-color: red'
     else:
         return ''
-
-# Función de comparación personalizada
-def comparar_celdas(x, y):
-    if pd.api.types.is_numeric_dtype(x) and pd.api.types.is_numeric_dtype(y):
-        return abs(x - y) > TOLERANCIA_DECIMAL
-    elif pd.api.types.is_string_dtype(x) and pd.api.types.is_string_dtype(y):
-        return str(x) != str(y)
-    else:
-        # Otros tipos de datos, considerarlos diferentes
-        return True
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -82,24 +72,13 @@ if archivo_base and archivo_comparar:
         st.write("Informacion que tiene diferencias:")
         st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
+        # ... (código existente)
+
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
-
             # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = pd.DataFrame(columns=df_base.columns)
-
-            for idx, row_dif in df_diferencias.iterrows():
-                row_base = df_base.loc[idx]
-
-                # Comparar celdas en la fila actual
-                diferencias_en_fila = any(comparar_celdas(row_dif[col], row_base[col]) for col in df_base.columns)
-
-                # Si hay diferencias, agregar la fila al DataFrame de diferencias del archivo base
-                if diferencias_en_fila:
-                    df_base_diferencias = pd.concat([df_base_diferencias, pd.DataFrame([row_base], columns=df_base.columns)], ignore_index=True)
-
-            # Mostrar el DataFrame con las filas del archivo base que tienen diferencias
+            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
             st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
 
         # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
@@ -118,7 +97,6 @@ if archivo_base and archivo_comparar:
             with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
                 df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
-                df_base_diferencias.to_excel(writer, sheet_name='Base_con_diferencias', index=True)
                 df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
                 df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
 
