@@ -57,8 +57,8 @@ if archivo_base and archivo_comparar:
     st.write("Nombres de las columnas en el archivo base:", df_base.columns.tolist())
     st.write("Nombres de las columnas en el archivo a comparar:", df_comparar.columns.tolist())
 
-    # Validar que la columna "material" esté presente en ambos archivos
-    if 'material' in df_base.columns and 'material' in df_comparar.columns:
+    # Validar que alguna columna del archivo base contenga 'material'
+    if any('material' in col.lower() for col in df_base.columns):
         # Encontrar filas con diferencias y marcar celdas con un asterisco
         df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
 
@@ -122,8 +122,6 @@ if archivo_base and archivo_comparar:
                 unsafe_allow_html=True
             )
     else:
-        st.warning(f"Ambos archivos deben tener una columna llamada 'material' para realizar la comparación. "
-                   f"Columnas en el archivo base: {df_base.columns.tolist()}. "
-                   f"Columnas en el archivo a comparar: {df_comparar.columns.tolist()}")
+        st.warning(f"Ninguna columna del archivo base contiene 'material'. Asegúrate de que la columna 'material' esté presente en alguno de los nombres de las columnas.")
 else:
     st.warning("Por favor, carga ambos archivos para comenzar la comparación.")
