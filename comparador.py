@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import base64
+from openpyxl.styles import PatternFill
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
@@ -100,14 +101,14 @@ if archivo_base and archivo_comparar:
                 df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
 
                 # Obtener el objeto ExcelWriter y el objeto Workbook para aplicar el formato
-                writer = writer.book
-                sheet = writer.get_sheet_by_name('Diferencias')
+                workbook = writer.book
+                sheet = workbook['Diferencias']
 
                 # Aplicar formato de resaltado a las celdas con diferencias
                 for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=2, max_col=sheet.max_column)):
                     for cell in row:
                         if '*' in str(cell.value):
-                            cell.style = 'background-color: red'
+                            cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
 
             # Enlace para descargar el archivo Excel
             st.markdown(
