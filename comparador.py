@@ -84,15 +84,15 @@ if archivo_base and archivo_comparar:
                 # Obtener la fila correspondiente en el archivo a comparar
                 row_comparar = df_comparar.loc[idx]
                 
+                # Función de comparación personalizada
+                def comparar_celdas(x, y):
+                    if pd.api.types.is_numeric_dtype(x) and pd.api.types.is_numeric_dtype(y):
+                        return abs(x - y) > TOLERANCIA_DECIMAL
+                    else:
+                        return x != y
+                
                 # Verificar las diferencias en cada celda
-                diferencias_en_fila = []
-                for col in df_base.columns:
-                    # Verificar si los datos son numéricos antes de intentar la resta
-                    if pd.api.types.is_numeric_dtype(row_comparar[col]) and pd.api.types.is_numeric_dtype(row_base[col]):
-                        if abs(row_comparar[col] - row_base[col]) > TOLERANCIA_DECIMAL:
-                            diferencias_en_fila.append(col)
-                    elif row_comparar[col] != row_base[col]:
-                        diferencias_en_fila.append(col)
+                diferencias_en_fila = any(comparar_celdas(row_comparar[col], row_base[col]) for col in df_base.columns)
                 
                 # Si hay diferencias, agregar la fila al DataFrame de resultados
                 if diferencias_en_fila:
