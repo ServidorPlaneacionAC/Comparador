@@ -122,6 +122,8 @@ if archivo_base and archivo_comparar:
                 unsafe_allow_html=True
             )
     else:
-        st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
+        st.warning(f"Ambos archivos deben tener una columna llamada 'material' para realizar la comparación. "
+                   f"Columnas en el archivo base: {df_base.columns.tolist()}. "
+                   f"Columnas en el archivo a comparar: {df_comparar.columns.tolist()}")
 else:
     st.warning("Por favor, carga ambos archivos para comenzar la comparación.")
