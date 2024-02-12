@@ -8,16 +8,6 @@ TOLERANCIA_DECIMAL = 1e-9
 
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar):
-    # Validar que las columnas "Material" sean las mismas
-    if 'material' not in df_base.columns or 'material' not in df_comparar.columns:
-        st.error("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
-        return None
-
-    # Validar que las columnas "material" tengan el mismo conjunto de valores
-    if set(df_base['material'].unique()) != set(df_comparar['material'].unique()):
-        st.error("Los conjuntos de valores en la columna 'material' no son iguales en ambos archivos. La comparación no puede realizarse.")
-        return None
-
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
     filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
         columns=['_merge'])
@@ -63,16 +53,15 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
-    # Validar que las columnas "material" sean las mismas y tengan el mismo conjunto de valores
-    if 'material' not in df_base.columns or 'material' not in df_comparar.columns:
-        st.error("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
-    elif set(df_base['material'].unique()) != set(df_comparar['material'].unique()):
-        st.error("Los conjuntos de valores en la columna 'material' no son iguales en ambos archivos. La comparación no puede realizarse.")
-    else:
-        # Encontrar filas con diferencias y marcar celdas con un asterisco
-        df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
+    # Validar que la columna "material" esté presente en ambos archivos
+    if 'material' in df_base.columns and 'material' in df_comparar.columns:
+        # Validar que las columnas "material" tengan el mismo conjunto de valores
+        if set(df_base['material'].unique()) != set(df_comparar['material'].unique()):
+            st.error("Los conjuntos de valores en la columna 'material' no son iguales en ambos archivos. La comparación no puede realizarse.")
+        else:
+            # Encontrar filas con diferencias y marcar celdas con un asterisco
+            df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
 
-        if df_diferencias is not None:
             # Encontrar filas faltantes en comparación al archivo base
             df_faltantes = df_base.loc[~df_base.index.isin(df_comparar.index)]
 
@@ -126,3 +115,5 @@ if archivo_base and archivo_comparar:
                     get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
                     unsafe_allow_html=True
                 )
+    else:
+        st.error("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
