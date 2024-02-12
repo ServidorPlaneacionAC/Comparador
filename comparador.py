@@ -55,14 +55,13 @@ if archivo_base and archivo_comparar:
 
     # Validar que la columna "material" esté presente en ambos archivos
     if 'material' in df_base.columns and 'material' in df_comparar.columns:
-        # Identificar los materiales que están en el archivo comparado pero no en el archivo base
-        materiales_nuevos = set(df_comparar['material'].unique()) - set(df_base['material'].unique())
-
         # Encontrar filas con diferencias y marcar celdas con un asterisco
         df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
 
         # Filtrar las filas en el archivo a comparar que tienen materiales nuevos
-        df_filas_con_materiales_nuevos = df_comparar[df_comparar['material'].isin(materiales_nuevos)].copy()
+        df_filas_con_materiales_nuevos = df_comparar[
+            ~df_comparar['material'].isin(df_base['material']) | (df_comparar['material'] != df_base['material'])
+        ].copy()
 
         # Encontrar filas faltantes en comparación al archivo base
         df_faltantes = df_base.loc[~df_base.index.isin(df_comparar.index)]
@@ -119,4 +118,6 @@ if archivo_base and archivo_comparar:
                 unsafe_allow_html=True
             )
     else:
-        st.error("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
+        st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
+    else:
+        st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
