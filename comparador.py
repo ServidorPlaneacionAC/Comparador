@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import openpyxl
+import base64
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
@@ -23,6 +23,13 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
             df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
+
+# Función para generar un enlace de descarga de un archivo binario
+def get_binary_file_downloader_html(file_path, file_label='Archivo'):
+    with open(file_path, 'rb') as f:
+        data = f.read()
+        base64_encoded = base64.b64encode(data).decode()
+        return f'<a href="data:application/octet-stream;base64,{base64_encoded}" download="{file_path}">{file_label}</a>'
 
 # Titulo
 st.title("Comparador de Datos Maestros")
@@ -81,3 +88,18 @@ if archivo_base and archivo_comparar:
         if st.button("Mostrar información faltante en comparación al archivo base"):
             st.write("Información faltante en comparación al archivo base:")
             st.dataframe(df_faltantes)
+
+        # Botón para descargar la información en un archivo Excel
+        if st.button("Descargar información en Excel"):
+            # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
+            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
+                # Escribir cada DataFrame en una pestaña diferente
+                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
+                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
+                df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
+
+            # Enlace para descargar el archivo Excel
+            st.markdown(
+                get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel'),
+                unsafe_allow_html=True
+            )
