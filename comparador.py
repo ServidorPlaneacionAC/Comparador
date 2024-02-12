@@ -72,8 +72,6 @@ if archivo_base and archivo_comparar:
         st.write("Informacion que tiene diferencias:")
         st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
-        # ... (código existente)
-
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
