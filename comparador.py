@@ -85,22 +85,20 @@ if archivo_base and archivo_comparar:
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
-            
-            # Inicializar un DataFrame vacío para almacenar las filas con diferencias del archivo base
+
+            # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
             df_base_diferencias = pd.DataFrame(columns=df_base.columns)
-            
-            # Iterar sobre las filas del archivo base y comparar con el archivo a comparar
-            for idx, row_base in df_base.iterrows():
-                # Obtener la fila correspondiente en el archivo a comparar
-                row_comparar = df_comparar.loc[idx]
-                
-                # Verificar si hay diferencias en alguna celda
-                diferencias_en_fila = any(comparar_celdas(row_comparar[col], row_base[col]) for col in df_base.columns)
-                
+
+            for idx, row_dif in df_diferencias.iterrows():
+                row_base = df_base.loc[idx]
+
+                # Comparar celdas en la fila actual
+                diferencias_en_fila = any(comparar_celdas(row_dif[col], row_base[col]) for col in df_base.columns)
+
                 # Si hay diferencias, agregar la fila al DataFrame de diferencias del archivo base
                 if diferencias_en_fila:
                     df_base_diferencias = pd.concat([df_base_diferencias, pd.DataFrame([row_base], columns=df_base.columns)], ignore_index=True)
-            
+
             # Mostrar el DataFrame con las filas del archivo base que tienen diferencias
             st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
 
