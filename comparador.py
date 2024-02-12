@@ -76,13 +76,29 @@ if archivo_base and archivo_comparar:
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
             
-            # Obtener los índices de las filas con diferencias
-            indices_con_diferencias = df_diferencias.index
+            # Inicializar un DataFrame vacío para almacenar las filas con diferencias del archivo base
+            df_base_diferencias = pd.DataFrame(columns=df_base.columns)
             
-            # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = df_base.loc[df_base.index.isin(indices_con_diferencias)].copy()
+            # Iterar sobre las filas del archivo base y comparar con el archivo a comparar
+            for idx, row_base in df_base.iterrows():
+                # Obtener la fila correspondiente en el archivo a comparar
+                row_comparar = df_comparar.loc[idx]
+                
+                # Verificar las diferencias en cada celda
+                diferencias_en_fila = []
+                for col in df_base.columns:
+                    # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
+                    if pd.api.types.is_numeric_dtype(row_comparar[col]) and pd.api.types.is_numeric_dtype(row_base[col]):
+                        if abs(row_comparar[col] - row_base[col]) > TOLERANCIA_DECIMAL:
+                            diferencias_en_fila.append(col)
+                    elif row_comparar[col] != row_base[col]:
+                        diferencias_en_fila.append(col)
+                
+                # Si hay diferencias, agregar la fila al DataFrame de resultados
+                if diferencias_en_fila:
+                    df_base_diferencias = pd.concat([df_base_diferencias, row_base.to_frame().transpose()])
             
-            # Actualizar el índice para coincidir con el df_diferencias
+            # Reiniciar el índice del DataFrame resultante
             df_base_diferencias.reset_index(drop=True, inplace=True)
             
             st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
