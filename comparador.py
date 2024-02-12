@@ -80,7 +80,10 @@ if archivo_base and archivo_comparar:
             indices_con_diferencias = df_diferencias.index
             
             # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = df_base[df_base.index.isin(indices_con_diferencias)].copy()
+            df_base_diferencias = df_base.loc[df_base.index.isin(indices_con_diferencias)].copy()
+            
+            # Actualizar el índice para coincidir con el df_diferencias
+            df_base_diferencias.reset_index(drop=True, inplace=True)
             
             st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
 
