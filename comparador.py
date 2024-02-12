@@ -19,9 +19,9 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
     for col in df_comparar.columns:
         # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
         if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(float(x[col].replace('*', '')) - float(df_base.at[x.name, col].replace('*', ''))) > TOLERANCIA_DECIMAL else x[col], axis=1)
+            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
         else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col].replace('*', '') != df_base.at[x.name, col].replace('*', '') else x[col], axis=1)
+            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and str(x[col]) != str(df_base.at[x.name, col]) else x[col], axis=1)
 
     return df_diferencias
 
@@ -87,9 +87,9 @@ if archivo_base and archivo_comparar:
                 # Función de comparación personalizada
                 def comparar_celdas(x, y):
                     if pd.api.types.is_numeric_dtype(x) and pd.api.types.is_numeric_dtype(y):
-                        return abs(float(x.replace('*', '')) - float(y.replace('*', ''))) > TOLERANCIA_DECIMAL
+                        return abs(x - y) > TOLERANCIA_DECIMAL
                     else:
-                        return x.replace('*', '') != y.replace('*', '')
+                        return str(x) != str(y)
                 
                 # Verificar las diferencias en cada celda
                 diferencias_en_fila = any(comparar_celdas(row_comparar[col], row_base[col]) for col in df_base.columns)
