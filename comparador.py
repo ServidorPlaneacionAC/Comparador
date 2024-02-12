@@ -53,6 +53,10 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
+    # Imprimir los nombres de las columnas en ambos DataFrames
+    st.write("Nombres de las columnas en el archivo base:", df_base.columns.tolist())
+    st.write("Nombres de las columnas en el archivo a comparar:", df_comparar.columns.tolist())
+
     # Validar que la columna "material" esté presente en ambos archivos
     if 'material' in df_base.columns and 'material' in df_comparar.columns:
         # Encontrar filas con diferencias y marcar celdas con un asterisco
@@ -119,4 +123,5 @@ if archivo_base and archivo_comparar:
             )
     else:
         st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
-    
+else:
+    st.warning("Por favor, carga ambos archivos para comenzar la comparación.")
