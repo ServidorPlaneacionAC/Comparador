@@ -87,7 +87,7 @@ if archivo_base and archivo_comparar:
                 # Verificar las diferencias en cada celda
                 diferencias_en_fila = []
                 for col in df_base.columns:
-                    # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
+                    # Verificar si los datos son numéricos antes de intentar la resta
                     if pd.api.types.is_numeric_dtype(row_comparar[col]) and pd.api.types.is_numeric_dtype(row_base[col]):
                         if abs(row_comparar[col] - row_base[col]) > TOLERANCIA_DECIMAL:
                             diferencias_en_fila.append(col)
