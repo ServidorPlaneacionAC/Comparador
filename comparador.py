@@ -119,5 +119,4 @@ if archivo_base and archivo_comparar:
             )
     else:
         st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
-    else:
-        st.warning("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
+    
