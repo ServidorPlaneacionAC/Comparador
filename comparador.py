@@ -53,27 +53,65 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
-    # Imprimir los nombres de las columnas en ambos DataFrames
-    st.write("Nombres de las columnas en el archivo base:", df_base.columns.tolist())
-    st.write("Nombres de las columnas en el archivo a comparar:", df_comparar.columns.tolist())
-
-    # Validar que alguna columna del archivo base contenga 'material'
-    if any('material' in col.lower() for col in df_base.columns):
-        # Validar que 'material' esté presente en las columnas del archivo a comparar
-        if 'material' in df_comparar.columns:
-            # Encontrar filas con diferencias y marcar celdas con un asterisco
-            df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
-
-            # Filtrar las filas en el archivo a comparar que tienen materiales nuevos
-            df_filas_con_materiales_nuevos = df_comparar[
-                ~df_comparar['material'].isin(df_base['material']) | (df_comparar['material'] != df_base['material'])
-            ].copy()
-
-            # Resto del código...
-
-        else:
-            st.warning(f"El archivo a comparar no tiene una columna llamada 'material'. Asegúrate de que la columna 'material' esté presente.")
+    # Verificar si los DataFrames son idénticos
+    if df_base.equals(df_comparar):
+        st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
+    elif df_base.columns.to_list() != df_comparar.columns.to_list():
+        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
     else:
-        st.warning("Ninguna columna del archivo base contiene 'material'. Asegúrate de que la columna 'material' esté presente en alguno de los nombres de las columnas.")
-else:
-    st.warning("Por favor, carga ambos archivos para comenzar la comparación.")
+        # Encontrar filas con diferencias y marcar celdas con un asterisco
+        df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
+
+        # Encontrar filas faltantes en comparación al archivo base
+        df_faltantes = df_base.loc[~df_base.index.isin(df_comparar.index)]
+
+        # Encontrar filas en el archivo a comparar que no están en el archivo base
+        df_filas_en_comparar_no_en_base = df_comparar.loc[~df_comparar.index.isin(df_base.index)]
+
+        # Mostrar el DataFrame con filas que tienen diferencias
+        st.write("Informacion que tiene diferencias:")
+        st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
+
+        # ... (código existente)
+
+        # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
+        if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
+            st.write("Información del archivo base correspondiente a las diferencias:")
+            # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
+            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
+            st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
+
+        # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
+        if st.button("Mostrar informacion nueva en comparar "):
+            st.write("Informacion en el archivo a comparar que no está en el archivo base:")
+            st.dataframe(df_filas_en_comparar_no_en_base.style.applymap(resaltar_diferencias))
+
+        # Botón para mostrar la información faltante en comparación al archivo base
+        if st.button("Mostrar información faltante en comparación al archivo base"):
+            st.write("Información faltante en comparación al archivo base:")
+            st.dataframe(df_faltantes.style.applymap(resaltar_diferencias))
+
+        # Botón para descargar la información en un archivo Excel con resaltado
+        if st.button("Descargar información en Excel con resaltado"):
+            # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
+            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
+                # Escribir cada DataFrame en una pestaña diferente
+                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
+                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
+                df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
+
+                # Obtener el objeto ExcelWriter y el objeto Workbook para aplicar el formato
+                workbook = writer.book
+                sheet = workbook['Diferencias']
+
+                # Aplicar formato de resaltado a las celdas con diferencias
+                for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=2, max_col=sheet.max_column)):
+                    for cell in row:
+                        if '*' in str(cell.value):
+                            cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
+
+            # Enlace para descargar el archivo Excel
+            st.markdown(
+                get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
+                unsafe_allow_html=True
+            )
