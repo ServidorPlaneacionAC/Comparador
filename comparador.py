@@ -24,12 +24,12 @@ def encontrar_filas_con_diferencias(df_base, df_comparar):
 
     return df_diferencias
 
-# Función para generar un enlace de descarga de un archivo binario
-def get_binary_file_downloader_html(file_path, file_label='Archivo'):
-    with open(file_path, 'rb') as f:
-        data = f.read()
-        base64_encoded = base64.b64encode(data).decode()
-        return f'<a href="data:application/octet-stream;base64,{base64_encoded}" download="{file_path}">{file_label}</a>'
+# Función para aplicar formato a las celdas con diferencias
+def resaltar_diferencias(val):
+    if '*' in str(val):
+        return 'background-color: red'
+    else:
+        return ''
 
 # Titulo
 st.title("Comparador de Datos Maestros")
@@ -62,41 +62,18 @@ if archivo_base and archivo_comparar:
 
         # Mostrar el DataFrame con filas que tienen diferencias
         st.write("Informacion que tiene diferencias:")
-        st.dataframe(df_diferencias.style.applymap(lambda x: 'background-color: red' if '*' in str(x) else ''))
+        st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
-        # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
-        if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
-            st.write("Información del archivo base correspondiente a las diferencias:")
-            # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
-
-            # Marcar las celdas con un asterisco solo donde la información no es igual al archivo a comparar
-            for col in df_base.columns:
-                if pd.api.types.is_numeric_dtype(df_base[col]) and pd.api.types.is_numeric_dtype(df_comparar[col]):
-                    df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and abs(x[col] - df_comparar.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
-                else:
-                    df_base_diferencias[col] = df_base_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_comparar.index and x[col] != df_comparar.at[x.name, col] else x[col], axis=1)
-
-            st.dataframe(df_base_diferencias)
-
-        # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
-        if st.button("Mostrar informacion nueva en comparar "):
-            st.write("Informacion en el archivo a comparar que no está en el archivo base:")
-            st.dataframe(df_filas_en_comparar_no_en_base)
-
-        # Botón para mostrar la información faltante en comparación al archivo base
-        if st.button("Mostrar información faltante en comparación al archivo base"):
-            st.write("Información faltante en comparación al archivo base:")
-            st.dataframe(df_faltantes)
+        # ... (código existente)
 
         # Botón para descargar la información en un archivo Excel
         if st.button("Descargar información en Excel"):
             # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
             with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
                 # Escribir cada DataFrame en una pestaña diferente
-                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
-                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
-                df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
+                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True, na_rep='', float_format="%.2f", header=True, startrow=1, startcol=1, engine='openpyxl', freeze_panes=(2, 1))
+                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True, na_rep='', float_format="%.2f", header=True, startrow=1, startcol=1, engine='openpyxl', freeze_panes=(2, 1))
+                df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True, na_rep='', float_format="%.2f", header=True, startrow=1, startcol=1, engine='openpyxl', freeze_panes=(2, 1))
 
             # Enlace para descargar el archivo Excel
             st.markdown(
