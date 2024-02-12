@@ -36,8 +36,11 @@ def resaltar_diferencias(val):
 def comparar_celdas(x, y):
     if pd.api.types.is_numeric_dtype(x) and pd.api.types.is_numeric_dtype(y):
         return abs(x - y) > TOLERANCIA_DECIMAL
-    else:
+    elif pd.api.types.is_string_dtype(x) and pd.api.types.is_string_dtype(y):
         return str(x) != str(y)
+    else:
+        # Otros tipos de datos, considerarlos diferentes
+        return True
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -80,27 +83,6 @@ if archivo_base and archivo_comparar:
         st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
-        if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
-            st.write("Información del archivo base correspondiente a las diferencias:")
-            
-            # Inicializar un DataFrame vacío para almacenar las filas con diferencias del archivo base
-            df_base_diferencias = pd.DataFrame(columns=df_base.columns)
-            
-            # Iterar sobre las filas del archivo base y comparar con el archivo a comparar
-            for idx, row_base in df_base.iterrows():
-                # Obtener la fila correspondiente en el archivo a comparar
-                row_comparar = df_comparar.loc[idx]
-                
-                # Verificar si hay diferencias en alguna celda
-                diferencias_en_fila = any(comparar_celdas(row_comparar[col], row_base[col]) for col in df_base.columns)
-                
-                # Si hay diferencias, agregar la fila al DataFrame de diferencias del archivo base
-                if diferencias_en_fila:
-                    df_base_diferencias = pd.concat([df_base_diferencias, pd.DataFrame([row_base], columns=df_base.columns)], ignore_index=True)
-            
-            # Mostrar el DataFrame con las filas del archivo base que tienen diferencias
-            st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
-             # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
             
