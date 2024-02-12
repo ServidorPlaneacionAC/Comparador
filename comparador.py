@@ -75,8 +75,13 @@ if archivo_base and archivo_comparar:
         # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
         if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
             st.write("Información del archivo base correspondiente a las diferencias:")
+            
+            # Obtener los índices de las filas con diferencias
+            indices_con_diferencias = df_diferencias.index
+            
             # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
+            df_base_diferencias = df_base[df_base.index.isin(indices_con_diferencias)].copy()
+            
             st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
 
         # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
