@@ -8,7 +8,7 @@ TOLERANCIA_DECIMAL = 1e-9
 
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar):
-    # Validar que las columnas "material" sean las mismas
+    # Validar que las columnas "Material" sean las mismas
     if 'material' not in df_base.columns or 'material' not in df_comparar.columns:
         st.error("Ambos archivos deben tener una columna llamada 'material' para realizar la comparación.")
         return None
