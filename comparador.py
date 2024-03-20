@@ -11,12 +11,11 @@ def comparar_por_material(df_base, df_comparar):
     df_base = df_base.set_index("Material")
     df_comparar = df_comparar.set_index("Material")
 
-    # Agrupar los datos por material
-    df_base_grouped = df_base.groupby(level=0).apply(lambda x: x.droplevel(0)).reset_index(drop=True)
-    df_comparar_grouped = df_comparar.groupby(level=0).apply(lambda x: x.droplevel(0)).reset_index(drop=True)
+    # Unir los DataFrames en uno solo para detectar las diferencias
+    df_merged = pd.merge(df_base, df_comparar, how='outer', left_index=True, right_index=True, suffixes=('_base', '_comparar'))
 
-    # Encontrar diferencias entre los DataFrames agrupados
-    df_diferencias = df_comparar_grouped[df_comparar_grouped.ne(df_base_grouped).any(axis=1)]
+    # Identificar las filas con diferencias en los datos
+    df_diferencias = df_merged[df_merged.ne(df_merged.shift(axis=1)).any(axis=1)]
 
     return df_diferencias
 
