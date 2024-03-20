@@ -25,20 +25,18 @@ def comparar_por_material(df_base, df_comparar):
     df_eliminados = df_base.loc[materiales_eliminados]
     df_diferencias = pd.concat([df_base.loc[materiales_con_diferencias], df_comparar.loc[materiales_con_diferencias]], keys=['Base', 'Comparar'])
 
-    # Identificar y resaltar las diferencias en color rojo
-    def resaltar_diferencias(val):
-        if isinstance(val, str) and "*" in val:
-            return 'background-color: red'
-        else:
-            return ''
-
-    return df_nuevos, df_eliminados, df_diferencias.style.applymap(resaltar_diferencias)
+    return df_nuevos, df_eliminados, df_diferencias
 
 # Función para mostrar enlaces de descarga de archivos binarios
 def get_binary_file_downloader_html(bin_data, file_label='File'):
     bin_str = base64.b64encode(bin_data).decode()
     href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{file_label}">{file_label}</a>'
     return href
+
+# Función para resaltar diferencias en rojo
+def resaltar_diferencias(val):
+    color = 'red' if '*' in str(val) else 'black'
+    return f'color: {color}'
 
 # UI
 st.title("Comparador de Datos Maestros")
@@ -55,13 +53,13 @@ if archivo_base and archivo_comparar:
 
     # Mostrar resultados
     st.header("Nuevos Materiales:")
-    st.dataframe(df_nuevos)
+    st.dataframe(df_nuevos.style.applymap(resaltar_diferencias))
 
     st.header("Materiales Eliminados:")
-    st.dataframe(df_eliminados)
+    st.dataframe(df_eliminados.style.applymap(resaltar_diferencias))
 
     st.header("Materiales con Diferencias:")
-    st.dataframe(df_diferencias)
+    st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
     # Descargar los resultados en archivos Excel
     if st.button("Descargar resultados en Excel"):
@@ -74,3 +72,16 @@ if archivo_base and archivo_comparar:
             bin_data = f.read()
 
         st.markdown(get_binary_file_downloader_html(bin_data, "resultados_comparacion.xlsx"), unsafe_allow_html=True)
+
+    # Botones adicionales
+    if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
+        st.write("Información del archivo base correspondiente a las diferencias:")
+        st.dataframe(df_base.loc[df_diferencias.index].style.applymap(resaltar_diferencias))
+
+    if st.button("Mostrar informacion nueva en comparar "):
+        st.write("Informacion en el archivo a comparar que no está en el archivo base:")
+        st.dataframe(df_comparar.loc[df_nuevos.index].style.applymap(resaltar_diferencias))
+
+    if st.button("Mostrar información faltante en comparación al archivo base"):
+        st.write("Información faltante en comparación al archivo base:")
+        st.dataframe(df_base.loc[df_eliminados.index].style.applymap(resaltar_diferencias))
