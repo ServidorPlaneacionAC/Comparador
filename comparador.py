@@ -112,4 +112,4 @@ if archivo_base and archivo_comparar:
         # Botón para descargar la información en un archivo Excel con resaltado
         if st.button("Descargar información en Excel con resaltado"):
             # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
-            with pd.ExcelWriter("informacion_comparada.xlsx", engine='open
+            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
