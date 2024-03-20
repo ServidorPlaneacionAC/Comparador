@@ -25,7 +25,14 @@ def comparar_por_material(df_base, df_comparar):
     df_eliminados = df_base.loc[materiales_eliminados]
     df_diferencias = pd.concat([df_base.loc[materiales_con_diferencias], df_comparar.loc[materiales_con_diferencias]], keys=['Base', 'Comparar'])
 
-    return df_nuevos, df_eliminados, df_diferencias
+    # Identificar y resaltar las diferencias en color rojo
+    def resaltar_diferencias(val):
+        if isinstance(val, str) and "*" in val:
+            return 'background-color: red'
+        else:
+            return ''
+
+    return df_nuevos, df_eliminados, df_diferencias.style.applymap(resaltar_diferencias)
 
 # Función para mostrar enlaces de descarga de archivos binarios
 def get_binary_file_downloader_html(bin_data, file_label='File'):
@@ -48,13 +55,13 @@ if archivo_base and archivo_comparar:
 
     # Mostrar resultados
     st.header("Nuevos Materiales:")
-    st.write(df_nuevos)
+    st.dataframe(df_nuevos)
 
     st.header("Materiales Eliminados:")
-    st.write(df_eliminados)
+    st.dataframe(df_eliminados)
 
     st.header("Materiales con Diferencias:")
-    st.write(df_diferencias)
+    st.dataframe(df_diferencias)
 
     # Descargar los resultados en archivos Excel
     if st.button("Descargar resultados en Excel"):
