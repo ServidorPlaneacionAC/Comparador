@@ -53,13 +53,13 @@ if archivo_base and archivo_comparar:
 
     # Mostrar resultados
     st.header("Nuevos Materiales:")
-    st.dataframe(df_nuevos.style.applymap(resaltar_diferencias))
+    st.dataframe(df_nuevos.style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
 
     st.header("Materiales Eliminados:")
-    st.dataframe(df_eliminados.style.applymap(resaltar_diferencias))
+    st.dataframe(df_eliminados.style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
 
     st.header("Materiales con Diferencias:")
-    st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
+    st.dataframe(df_diferencias.style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
 
     # Descargar los resultados en archivos Excel
     if st.button("Descargar resultados en Excel"):
@@ -76,12 +76,12 @@ if archivo_base and archivo_comparar:
     # Botones adicionales
     if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
         st.write("Información del archivo base correspondiente a las diferencias:")
-        st.dataframe(df_base.loc[df_diferencias.index].style.applymap(resaltar_diferencias))
+        st.dataframe(df_base.loc[df_diferencias.index].style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
 
     if st.button("Mostrar informacion nueva en comparar "):
         st.write("Informacion en el archivo a comparar que no está en el archivo base:")
-        st.dataframe(df_comparar.loc[df_nuevos.index].style.applymap(resaltar_diferencias))
+        st.dataframe(df_comparar.loc[df_nuevos.index].style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
 
     if st.button("Mostrar información faltante en comparación al archivo base"):
         st.write("Información faltante en comparación al archivo base:")
-        st.dataframe(df_base.loc[df_eliminados.index].style.applymap(resaltar_diferencias))
+        st.dataframe(df_base.loc[df_eliminados.index].style.applymap(resaltar_diferencias).render(), unsafe_allow_html=True)
