@@ -12,13 +12,13 @@ def comparar_por_material(df_base, df_comparar):
     conjunto_comparar = set(df_comparar.index)
 
     # Encontrar elementos en conjunto_comparar que no están en conjunto_base (nuevos materiales)
-    nuevos_materiales = conjunto_comparar - conjunto_base
+    nuevos_materiales = list(conjunto_comparar - conjunto_base)
 
     # Encontrar elementos en conjunto_base que no están en conjunto_comparar (materiales eliminados)
-    materiales_eliminados = conjunto_base - conjunto_comparar
+    materiales_eliminados = list(conjunto_base - conjunto_comparar)
 
     # Encontrar elementos en ambos conjuntos pero con diferencias en los datos
-    materiales_con_diferencias = conjunto_base.intersection(conjunto_comparar)
+    materiales_con_diferencias = list(conjunto_base.intersection(conjunto_comparar))
 
     # Crear DataFrames para mostrar las diferencias
     df_nuevos = df_comparar.loc[nuevos_materiales]
