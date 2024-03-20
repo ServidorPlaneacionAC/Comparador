@@ -1,114 +1,47 @@
-import streamlit as st
 import pandas as pd
-import base64
-from openpyxl.styles import PatternFill
+import streamlit as st
 
-# Tolerancia para la comparación de números decimales
-TOLERANCIA_DECIMAL = 1e-9
-
-def normalizar_texto(val):
-    """Normaliza cadenas de texto para la comparación."""
-    if isinstance(val, str):
-        return val.strip().lower()  # Elimina espacios extra y convierte a minúsculas
-    return val
-
-# Función para encontrar filas con diferencias y marcar las celdas con un asterisco
-def encontrar_filas_con_diferencias(df_base, df_comparar):
-    # Normalizar texto en ambos DataFrames
-    df_base = df_base.applymap(normalizar_texto)
-    df_comparar = df_comparar.applymap(normalizar_texto)
-    
-    # Asegurar consistencia de tipos de datos
-    for col in df_comparar.columns:
-        df_comparar[col] = df_comparar[col].astype(df_base[col].dtype)
-    
-    # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
-        columns=['_merge'])
-
-    # Obtener el DataFrame con filas que tienen diferencias
-    df_diferencias = df_comparar[df_comparar.index.isin(filas_nuevas.index)].copy()
-
-    for col in df_comparar.columns:
-        if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
-        else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x[col] != df_base.at[x.name, col] else x[col], axis=1)
-
-    return df_diferencias
-
-# Función para aplicar formato a las celdas con diferencias
-def resaltar_diferencias(val):
-    if '*' in str(val):
-        return 'background-color: red'
-    else:
-        return ''
-
-# Función para generar un enlace de descarga de un archivo binario
-def get_binary_file_downloader_html(file_path, file_label='Archivo'):
-    with open(file_path, 'rb') as f:
-        data = f.read()
-        base64_encoded = base64.b64encode(data).decode()
-        return f'<a href="data:application/octet-stream;base64,{base64_encoded}" download="{file_path}">{file_label}</a>'
-
-# Cargar y preparar dataframe
+# Cargar archivos
 def cargar_y_preparar_dataframe(archivo):
-    """Carga un archivo Excel y prepara el DataFrame."""
-    df = pd.read_excel(archivo, index_col=0)  # Asegúrate de que la primera columna es adecuada como índice
+    """Carga un archivo Excel."""
+    df = pd.read_excel(archivo)
+    # Opcional: podrías querer resetear el índice si vas a manipular los dataframes
+    # df.reset_index(drop=True, inplace=True)
     return df
 
-# Titulo
-st.title("Comparador de Datos Maestros")
+# Comparar contenido de columnas entre dos DataFrames
+def comparar_contenido_columnas(df_base, df_comparar):
+    # Asegurarse de que ambas DataFrames tengan las mismas columnas
+    if not df_base.columns.equals(df_comparar.columns):
+        raise ValueError("Los DataFrames no tienen las mismas columnas")
+    
+    diferencias = {}
+    # Iterar sobre cada columna
+    for col in df_base.columns:
+        # Para cada elemento en la columna del DataFrame base, verificar si está presente en la columna correspondiente del DataFrame a comparar
+        diferencias_col = df_base[col].apply(lambda x: x not in df_comparar[col].values)
+        if diferencias_col.any():
+            diferencias[col] = diferencias_col
+    
+    return diferencias
 
-# Para subir el archivo base en Excel
+# Subir archivos mediante Streamlit
 archivo_base = st.file_uploader("Cargar archivo base (base de datos)", type=["xlsx"])
-
-# Para subir el archivo a comparar en Excel
 archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
     df_base = cargar_y_preparar_dataframe(archivo_base)
     df_comparar = cargar_y_preparar_dataframe(archivo_comparar)
-
-    if df_base.equals(df_comparar):
-        st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
-    elif df_base.columns.to_list() != df_comparar.columns.to_list():
-        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
-    else:
-        df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
-        df_faltantes = df_base.loc[~df_base.index.isin(df_comparar.index)]
-        df_filas_en_comparar_no_en_base = df_comparar.loc[~df_comparar.index.isin(df_base.index)]
-
-        st.write("Informacion que tiene diferencias:")
-        st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
-
-        if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
-            st.write("Información del archivo base correspondiente a las diferencias:")
-            df_base_diferencias = df_base[df_base.index.isin(df_diferencias.index)].copy()
-            st.dataframe(df_base_diferencias.style.applymap(resaltar_diferencias))
-
-        if st.button("Mostrar informacion nueva en comparar "):
-            st.write("Informacion en el archivo a comparar que no está en el archivo base:")
-            st.dataframe(df_filas_en_comparar_no_en_base.style.applymap(resaltar_diferencias))
-
-        if st.button("Mostrar información faltante en comparación al archivo base"):
-            st.write("Información faltante en comparación al archivo base:")
-            st.dataframe(df_faltantes.style.applymap(resaltar_diferencias))
-
-        if st.button("Descargar información en Excel con resaltado"):
-            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
-                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
-                df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
-                df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
-
-                workbook = writer.book
-                sheet = workbook['Diferencias']
-                for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=2, max_col=sheet.max_column)):
-                    for cell in row:
-                        if '*' in str(cell.value):
-                            cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
-
-            st.markdown(
-                get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
-                unsafe_allow_html=True
-            )
+    
+    try:
+        diferencias = comparar_contenido_columnas(df_base, df_comparar)
+        if diferencias:
+            st.write("Se encontraron diferencias en las siguientes columnas:")
+            for col, diff in diferencias.items():
+                st.write(f"- Columna: {col}, Cantidad de diferencias: {diff.sum()}")
+                # Opcional: Mostrar índices de las diferencias
+                # st.write(diff[diff].index.tolist())
+        else:
+            st.write("No se encontraron diferencias en el contenido de las columnas.")
+    except ValueError as e:
+        st.error(e)
