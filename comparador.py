@@ -3,9 +3,9 @@ import pandas as pd
 import base64
 
 def comparar_por_material(df_base, df_comparar):
-    # Establecer la columna "material" como índice
-    df_base = df_base.set_index("material")
-    df_comparar = df_comparar.set_index("material")
+    # Establecer la columna "Material" como índice
+    df_base = df_base.set_index("Material")
+    df_comparar = df_comparar.set_index("Material")
 
     # Organizar la información en conjuntos basados en el material
     conjunto_base = set(df_base.index)
