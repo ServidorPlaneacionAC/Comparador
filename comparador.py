@@ -110,6 +110,26 @@ if archivo_base and archivo_comparar:
             st.table(df_faltantes.style.applymap(resaltar_diferencias))
 
         # Botón para descargar la información en un archivo Excel con resaltado
-        if st.button("Descargar información en Excel con resaltado"):
-            # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
-            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
+if st.button("Descargar información en Excel con resaltado"):
+    # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
+    with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
+        # Escribir cada DataFrame en una pestaña diferente
+        df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
+        df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
+        df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
+
+        # Obtener el objeto ExcelWriter y el objeto Workbook para aplicar el formato
+        workbook = writer.book
+        sheet = workbook['Diferencias']
+
+        # Aplicar formato de resaltado a las celdas con diferencias
+        for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=2, max_col=sheet.max_column)):
+            for cell in row:
+                if '*' in str(cell.value):
+                    cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
+
+    # Enlace para descargar el archivo Excel
+    st.markdown(
+        get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
+        unsafe_allow_html=True
+    )
