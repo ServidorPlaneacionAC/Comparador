@@ -2,41 +2,34 @@ import streamlit as st
 import pandas as pd
 import base64
 
+# Tolerancia para la comparación de números decimales
+TOLERANCIA_DECIMAL = 1e-9
+
+# Función para encontrar diferencias entre los datos de dos DataFrames agrupados por material
 def comparar_por_material(df_base, df_comparar):
     # Establecer la columna "Material" como índice
     df_base = df_base.set_index("Material")
     df_comparar = df_comparar.set_index("Material")
 
-    # Organizar la información en conjuntos basados en el material
-    conjunto_base = set(df_base.index)
-    conjunto_comparar = set(df_comparar.index)
+    # Agrupar los datos por material
+    df_base_grouped = df_base.groupby(level=0).apply(lambda x: x.droplevel(0)).reset_index(drop=True)
+    df_comparar_grouped = df_comparar.groupby(level=0).apply(lambda x: x.droplevel(0)).reset_index(drop=True)
 
-    # Encontrar elementos en conjunto_comparar que no están en conjunto_base (nuevos materiales)
-    nuevos_materiales = list(conjunto_comparar - conjunto_base)
+    # Encontrar diferencias entre los DataFrames agrupados
+    df_diferencias = df_comparar_grouped[df_comparar_grouped.ne(df_base_grouped).any(axis=1)]
 
-    # Encontrar elementos en conjunto_base que no están en conjunto_comparar (materiales eliminados)
-    materiales_eliminados = list(conjunto_base - conjunto_comparar)
-
-    # Encontrar elementos en ambos conjuntos pero con diferencias en los datos
-    materiales_con_diferencias = list(conjunto_base.intersection(conjunto_comparar))
-
-    # Crear DataFrames para mostrar las diferencias
-    df_nuevos = df_comparar.loc[nuevos_materiales]
-    df_eliminados = df_base.loc[materiales_eliminados]
-    df_diferencias = pd.concat([df_base.loc[materiales_con_diferencias], df_comparar.loc[materiales_con_diferencias]], keys=['Base', 'Comparar'])
-
-    return df_nuevos, df_eliminados, df_diferencias
-
-# Función para mostrar enlaces de descarga de archivos binarios
-def get_binary_file_downloader_html(bin_data, file_label='File'):
-    bin_str = base64.b64encode(bin_data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{file_label}">{file_label}</a>'
-    return href
+    return df_diferencias
 
 # Función para resaltar diferencias en rojo
 def resaltar_diferencias(val):
     color = 'red' if '*' in str(val) else 'black'
     return f'color: {color}'
+
+# Función para generar un enlace de descarga de un archivo binario
+def get_binary_file_downloader_html(bin_data, file_label='File'):
+    bin_str = base64.b64encode(bin_data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{file_label}">{file_label}</a>'
+    return href
 
 # UI
 st.title("Comparador de Datos Maestros")
@@ -48,40 +41,22 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
-    # Comparar los conjuntos de datos basados en el material
-    df_nuevos, df_eliminados, df_diferencias = comparar_por_material(df_base, df_comparar)
+    # Comparar los datos agrupados por material
+    df_diferencias = comparar_por_material(df_base, df_comparar)
 
     # Mostrar resultados
-    st.header("Nuevos Materiales:")
-    st.table(df_nuevos.style.applymap(resaltar_diferencias))
+    if not df_diferencias.empty:
+        st.header("Materiales con Diferencias:")
+        st.table(df_diferencias.style.applymap(resaltar_diferencias))
+    else:
+        st.info("No se encontraron diferencias en los datos.")
 
-    st.header("Materiales Eliminados:")
-    st.table(df_eliminados.style.applymap(resaltar_diferencias))
-
-    st.header("Materiales con Diferencias:")
-    st.table(df_diferencias.style.applymap(resaltar_diferencias))
-
-    # Descargar los resultados en archivos Excel
+    # Descargar los resultados en un archivo Excel
     if st.button("Descargar resultados en Excel"):
         with pd.ExcelWriter("resultados_comparacion.xlsx") as writer:
-            df_nuevos.to_excel(writer, sheet_name="Nuevos Materiales")
-            df_eliminados.to_excel(writer, sheet_name="Materiales Eliminados")
-            df_diferencias.to_excel(writer, sheet_name="Materiales con Diferencias")
+            df_diferencias.to_excel(writer, sheet_name="Materiales con Diferencias", index=False)
 
         with open("resultados_comparacion.xlsx", "rb") as f:
             bin_data = f.read()
 
         st.markdown(get_binary_file_downloader_html(bin_data, "resultados_comparacion.xlsx"), unsafe_allow_html=True)
-
-    # Botones adicionales
-    if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
-        st.write("Información del archivo base correspondiente a las diferencias:")
-        st.table(df_base.loc[df_diferencias.index].style.applymap(resaltar_diferencias))
-
-    if st.button("Mostrar informacion nueva en comparar "):
-        st.write("Informacion en el archivo a comparar que no está en el archivo base:")
-        st.table(df_comparar.loc[df_nuevos.index].style.applymap(resaltar_diferencias))
-
-    if st.button("Mostrar información faltante en comparación al archivo base"):
-        st.write("Información faltante en comparación al archivo base:")
-        st.table(df_base.loc[df_eliminados.index].style.applymap(resaltar_diferencias))
