@@ -1,47 +1,58 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import base64
 
-# Cargar archivos
-def cargar_y_preparar_dataframe(archivo):
-    """Carga un archivo Excel."""
-    df = pd.read_excel(archivo)
-    # Opcional: podrías querer resetear el índice si vas a manipular los dataframes
-    # df.reset_index(drop=True, inplace=True)
-    return df
+# Tolerancia para la comparación de números decimales
+TOLERANCIA_DECIMAL = 1e-9
 
-# Comparar contenido de columnas entre dos DataFrames
-def comparar_contenido_columnas(df_base, df_comparar):
-    # Asegurarse de que ambas DataFrames tengan las mismas columnas
-    if not df_base.columns.equals(df_comparar.columns):
-        raise ValueError("Los DataFrames no tienen las mismas columnas")
-    
-    diferencias = {}
-    # Iterar sobre cada columna
-    for col in df_base.columns:
-        # Para cada elemento en la columna del DataFrame base, verificar si está presente en la columna correspondiente del DataFrame a comparar
-        diferencias_col = df_base[col].apply(lambda x: x not in df_comparar[col].values)
-        if diferencias_col.any():
-            diferencias[col] = diferencias_col
-    
-    return diferencias
+def encontrar_diferencias_por_columna(df_base, df_comparar):
+    # Copiar df_comparar para marcar diferencias
+    df_diferencias = df_comparar.copy()
 
-# Subir archivos mediante Streamlit
+    # Iterar sobre cada columna para comparar sus contenidos
+    for col in df_comparar.columns:
+        if pd.api.types.is_numeric_dtype(df_comparar[col]):
+            # Para columnas numéricas, marcar diferencias considerando una tolerancia
+            df_diferencias[col] = df_comparar.apply(
+                lambda x: f"{x[col]}*" if not ((df_base[col] - x[col]).abs() <= TOLERANCIA_DECIMAL).any() else x[col], axis=1)
+        else:
+            # Para columnas no numéricas, marcar diferencias directamente
+            df_diferencias[col] = df_comparar.apply(
+                lambda x: f"{x[col]}*" if x[col] not in df_base[col].values else x[col], axis=1)
+
+    return df_diferencias
+
+def resaltar_diferencias(val):
+    if '*' in str(val):
+        return 'background-color: red'
+    else:
+        return ''
+
+def get_binary_file_downloader_html(bin_file, file_label='File'):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    bin_str = base64.b64encode(data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{bin_file}">{file_label}</a>'
+    return href
+
+# UI
+st.title("Comparador de Datos Maestros")
+
 archivo_base = st.file_uploader("Cargar archivo base (base de datos)", type=["xlsx"])
 archivo_comparar = st.file_uploader("Cargar archivo a comparar", type=["xlsx"])
 
 if archivo_base and archivo_comparar:
-    df_base = cargar_y_preparar_dataframe(archivo_base)
-    df_comparar = cargar_y_preparar_dataframe(archivo_comparar)
-    
-    try:
-        diferencias = comparar_contenido_columnas(df_base, df_comparar)
-        if diferencias:
-            st.write("Se encontraron diferencias en las siguientes columnas:")
-            for col, diff in diferencias.items():
-                st.write(f"- Columna: {col}, Cantidad de diferencias: {diff.sum()}")
-                # Opcional: Mostrar índices de las diferencias
-                # st.write(diff[diff].index.tolist())
-        else:
-            st.write("No se encontraron diferencias en el contenido de las columnas.")
-    except ValueError as e:
-        st.error(e)
+    df_base = pd.read_excel(archivo_base)
+    df_comparar = pd.read_excel(archivo_comparar)
+
+    if set(df_base.columns) != set(df_comparar.columns):
+        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
+    else:
+        df_diferencias = encontrar_diferencias_por_columna(df_base, df_comparar)
+        st.write("Información que tiene diferencias:")
+        st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
+
+        # Botón para descargar la información en un archivo Excel con resaltado
+        if st.button("Descargar información en Excel con resaltado"):
+            df_diferencias.to_excel("informacion_comparada.xlsx", index=False)
+            st.markdown(get_binary_file_downloader_html('informacion_comparada.xlsx', 'Descargar como Excel'), unsafe_allow_html=True)
