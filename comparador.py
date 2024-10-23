@@ -7,32 +7,43 @@ TOLERANCIA_DECIMAL = 1e-9
 
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
-    # Convertir a cadenas para evitar problemas de tipo de datos en la clave
+    # Asegurarse de que la columna clave esté en ambos DataFrames
+    if clave not in df_base.columns or clave not in df_comparar.columns:
+        raise ValueError("La columna clave debe estar presente en ambos DataFrames.")
+    
+    # Convertir la columna clave a tipo string para evitar problemas de tipo
     df_base[clave] = df_base[clave].astype(str)
     df_comparar[clave] = df_comparar[clave].astype(str)
 
-    # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', on=clave, indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(columns=['_merge'])
+    # Unir los DataFrames en base a la clave
+    df_merged = df_comparar.merge(df_base, on=clave, suffixes=('_comparar', '_base'), how='left', indicator=True)
 
     # Crear un DataFrame para las diferencias
-    df_diferencias = df_comparar[df_comparar[clave].isin(filas_nuevas[clave])].copy()
+    df_diferencias = df_merged[df_merged['_merge'] == 'both'].copy()
 
-    # Marcar las celdas con un asterisco donde la información no es igual al archivo base
-    for col in df_comparar.columns:
+    # Comparar las columnas
+    for col in df_base.columns:
         if col == clave:  # No comparar la columna clave
             continue
         
+        col_comparar = col + '_comparar'
+        col_base = col + '_base'
+        
         # Comparar columnas según el tipo
-        if pd.api.types.is_numeric_dtype(df_comparar[col]):
+        if pd.api.types.is_numeric_dtype(df_base[col]):
             # Comparar numéricamente con tolerancia
-            df_diferencias[col] = df_diferencias.apply(
-                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and abs(x[col] - df_base.loc[df_base[clave] == x[clave], col].values[0]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+            df_diferencias[col_comparar] = df_diferencias.apply(
+                lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and abs(x[col_comparar] - x[col_base]) > TOLERANCIA_DECIMAL else x[col_comparar], axis=1
+            )
         else:
             # Comparar como cadenas, considerando NaN
-            df_diferencias[col] = df_diferencias.apply(
-                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and (pd.notna(x[col]) and pd.notna(df_base.loc[df_base[clave] == x[clave], col].values[0])) and str(x[col]).strip() != str(df_base.loc[df_base[clave] == x[clave], col].values[0]).strip() else x[col], axis=1)
+            df_diferencias[col_comparar] = df_diferencias.apply(
+                lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and str(x[col_comparar]).strip() != str(x[col_base]).strip() else x[col_comparar], axis=1
+            )
 
-    return df_diferencias
+    # Seleccionar solo las columnas que queremos mostrar
+    columnas_a_mostrar = [clave] + [col + '_comparar' for col in df_base.columns if col != clave]
+    return df_diferencias[columnas_a_mostrar]
 
 # Función para aplicar formato a las celdas con diferencias
 def resaltar_diferencias(val):
