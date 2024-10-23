@@ -25,16 +25,25 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, columna_llave):
     # Comparar cada celda y marcar con un asterisco si hay diferencias
     for col in df_comparar_filtrado.columns:
         if col in df_base_filtrado.columns:
-            # Comparar valores numéricos con tolerancia
-            if pd.api.types.is_numeric_dtype(df_comparar_filtrado[col]) and pd.api.types.is_numeric_dtype(df_base_filtrado[col]):
-                df_diferencias[col] = df_comparar_filtrado.apply(
-                    lambda x: f"{x[col]}*" if pd.notna(x[col]) and pd.notna(df_base_filtrado.at[x.name, col]) and abs(float(x[col]) - float(df_base_filtrado.at[x.name, col])) > TOLERANCIA_DECIMAL else x[col], axis=1
-                )
-            else:
-                # Comparar valores no numéricos, manejando valores nulos y tipos de datos
-                df_diferencias[col] = df_comparar_filtrado.apply(
-                    lambda x: f"{x[col]}*" if pd.notna(x[col]) and pd.notna(df_base_filtrado.at[x.name, col]) and str(x[col]) != str(df_base_filtrado.at[x.name, col]) else x[col], axis=1
-                )
+            # Aplicar comparación segura para cada celda
+            def comparar_celdas(x):
+                try:
+                    # Reemplazar valores nulos con un valor específico para la comparación
+                    val_base = df_base_filtrado.at[x.name, col] if pd.notna(df_base_filtrado.at[x.name, col]) else ''
+                    val_comparar = x[col] if pd.notna(x[col]) else ''
+
+                    # Comparar valores numéricos con tolerancia
+                    if pd.api.types.is_numeric_dtype(df_comparar_filtrado[col]) and pd.api.types.is_numeric_dtype(df_base_filtrado[col]):
+                        return f"{x[col]}*" if abs(float(val_comparar) - float(val_base)) > TOLERANCIA_DECIMAL else x[col]
+                    else:
+                        # Comparar valores no numéricos como cadenas
+                        return f"{x[col]}*" if str(val_comparar) != str(val_base) else x[col]
+                except Exception as e:
+                    # Si ocurre un error en la comparación, devolver el valor original sin marcar
+                    return x[col]
+
+            # Aplicar la comparación en la columna actual
+            df_diferencias[col] = df_comparar_filtrado.apply(comparar_celdas, axis=1)
 
     return df_diferencias
 
