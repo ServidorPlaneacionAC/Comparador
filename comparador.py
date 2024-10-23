@@ -12,20 +12,25 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, columna_llave):
     df_base = df_base.set_index(columna_llave)
     df_comparar = df_comparar.set_index(columna_llave)
 
-    # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
-        columns=['_merge'])
+    # Identificar las filas que existen en ambas tablas
+    filas_comunes = df_base.index.intersection(df_comparar.index)
 
-    # Obtener el DataFrame con filas que tienen diferencias
-    df_diferencias = df_comparar[df_comparar.index.isin(filas_nuevas.index)].copy()
+    # Filtrar solo las filas que están presentes en ambos DataFrames
+    df_base_filtrado = df_base.loc[filas_comunes]
+    df_comparar_filtrado = df_comparar.loc[filas_comunes]
 
-    # Marcar las celdas con un asterisco solo donde la información no es igual al archivo base
-    for col in df_comparar.columns:
-        # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
-        if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
-        else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
+    # DataFrame para almacenar diferencias
+    df_diferencias = df_comparar_filtrado.copy()
+
+    # Comparar cada celda y marcar con un asterisco si hay diferencias
+    for col in df_comparar_filtrado.columns:
+        if col in df_base_filtrado.columns:
+            # Comparar valores numéricos con tolerancia
+            if pd.api.types.is_numeric_dtype(df_comparar_filtrado[col]) and pd.api.types.is_numeric_dtype(df_base_filtrado[col]):
+                df_diferencias[col] = df_comparar_filtrado.apply(lambda x: f"{x[col]}*" if abs(x[col] - df_base_filtrado.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+            else:
+                # Comparar valores no numéricos
+                df_diferencias[col] = df_comparar_filtrado.apply(lambda x: f"{x[col]}*" if x[col] != df_base_filtrado.at[x.name, col] else x[col], axis=1)
 
     return df_diferencias
 
