@@ -5,13 +5,11 @@ import base64
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
 
-# Función para encontrar filas con diferencias y marcar las celdas con un asterisco
+# Función para encontrar filas con diferencias
 def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
-    # Asegurarse de que la columna clave esté en ambos DataFrames
     if clave not in df_base.columns or clave not in df_comparar.columns:
         raise ValueError("La columna clave debe estar presente en ambos DataFrames.")
     
-    # Convertir la columna clave a tipo string para evitar problemas de tipo
     df_base[clave] = df_base[clave].astype(str)
     df_comparar[clave] = df_comparar[clave].astype(str)
 
@@ -21,36 +19,25 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
     # Crear un DataFrame para las diferencias
     df_diferencias = df_merged[df_merged['_merge'] == 'both'].copy()
 
-    # Comparar las columnas
+    # Comparar las columnas y marcar las diferencias
     for col in df_base.columns:
-        if col == clave:  # No comparar la columna clave
+        if col == clave:
             continue
         
         col_comparar = col + '_comparar'
         col_base = col + '_base'
         
-        # Comparar columnas según el tipo
-        if pd.api.types.is_numeric_dtype(df_base[col]):
-            # Comparar numéricamente con tolerancia
-            df_diferencias[col_comparar] = df_diferencias.apply(
-                lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and abs(x[col_comparar] - x[col_base]) > TOLERANCIA_DECIMAL else x[col_comparar], axis=1
-            )
-        else:
-            # Comparar como cadenas, considerando NaN
-            df_diferencias[col_comparar] = df_diferencias.apply(
-                lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and str(x[col_comparar]).strip() != str(x[col_base]).strip() else x[col_comparar], axis=1
-            )
+        # Crear una columna para las diferencias
+        df_diferencias[col + '_diferencia'] = df_diferencias.apply(
+            lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and (
+                (pd.api.types.is_numeric_dtype(df_base[col]) and abs(x[col_comparar] - x[col_base]) > TOLERANCIA_DECIMAL) or
+                (str(x[col_comparar]).strip() != str(x[col_base]).strip())
+            ) else x[col_comparar], axis=1
+        )
 
     # Seleccionar solo las columnas que queremos mostrar
-    columnas_a_mostrar = [clave] + [col + '_comparar' for col in df_base.columns if col != clave]
+    columnas_a_mostrar = [clave] + [col + '_diferencia' for col in df_base.columns if col != clave]
     return df_diferencias[columnas_a_mostrar]
-
-# Función para aplicar formato a las celdas con diferencias
-def resaltar_diferencias(val):
-    if '*' in str(val):
-        return 'background-color: red'
-    else:
-        return ''
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -83,15 +70,19 @@ if archivo_base and archivo_comparar:
         elif df_base.columns.to_list() != df_comparar.columns.to_list():
             st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
         else:
-            # Encontrar filas con diferencias y marcar celdas con un asterisco
+            # Encontrar filas con diferencias
             df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar, clave)
 
             # Mostrar el DataFrame con filas que tienen diferencias
             st.write("Información que tiene diferencias:")
-            st.table(df_diferencias.style.applymap(resaltar_diferencias))
+            # Modificar la visualización de las diferencias para mostrar un asterisco en rojo
+            df_diferencias_display = df_diferencias.copy()
+            for col in df_diferencias_display.columns[1:]:
+                df_diferencias_display[col] = df_diferencias_display[col].str.replace('*', '', regex=False)
+                df_diferencias_display[col] = df_diferencias_display[col].apply(lambda x: f"<span style='color: red;'>{x}*</span>" if '*' in x else x)
 
-            # Resto del código para mostrar información y descargar resultados...
-            # ...
+            # Mostrar el DataFrame con HTML
+            st.markdown(df_diferencias_display.to_html(escape=False), unsafe_allow_html=True)
 
 # Botón para descargar la información en un archivo Excel con resaltado
 if st.button("Descargar información en Excel con resaltado"):
