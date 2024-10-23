@@ -1,34 +1,26 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import base64
 from openpyxl.styles import PatternFill
 
-# Tolerancia para la comparación de números decimales
-TOLERANCIA_DECIMAL = 1e-9
+# Función para encontrar diferencias y contar diferencias por columna
+def encontrar_diferencias(df_base, df_comparar):
+    diferencias = {}
+    resumen = {}
 
-# Función para encontrar filas con diferencias y marcar las celdas con un asterisco
-def encontrar_filas_con_diferencias(df_base, df_comparar):
-    # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(columns=['_merge'])
+    for col in df_base.columns:
+        # Comparar cada columna
+        diffs = df_comparar[col] != df_base[col]
+        diferencias[col] = df_comparar[diffs].copy()
+        # Contar el número de diferencias
+        resumen[col] = diffs.sum()
+        
+        # Marcar diferencias en el DataFrame
+        diferencias[col]['Diferencia'] = 'Diferente'
+        diferencias[col].loc[differences[col].index, col] += '*'
 
-    # Obtener el DataFrame con filas que tienen diferencias
-    df_diferencias = df_comparar[df_comparar.index.isin(filas_nuevas.index)].copy()
-
-    # Marcar las celdas con un asterisco solo donde la información no es igual al archivo base
-    for col in df_comparar.columns:
-        if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and abs(x[col] - df_base.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
-        else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x.name in df_base.index and x[col] != df_base.at[x.name, col] else x[col], axis=1)
-
-    return df_diferencias
-
-# Función para aplicar formato a las celdas con diferencias
-def resaltar_diferencias(val):
-    if '*' in str(val):
-        return 'background-color: red'
-    else:
-        return ''
+    return diferencias, resumen
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -38,7 +30,7 @@ def get_binary_file_downloader_html(file_path, file_label='Archivo'):
         return f'<a href="data:application/octet-stream;base64,{base64_encoded}" download="{file_path}">{file_label}</a>'
 
 # Titulo
-st.title("Comparador de Datos Maestros")
+st.title("Comparador de Datos Maestros Mejorado")
 
 # Para subir el archivo base en Excel
 archivo_base = st.file_uploader("Cargar archivo base (base de datos)", type=["xlsx"])
@@ -55,32 +47,32 @@ if archivo_base and archivo_comparar:
     if df_base.columns.to_list() != df_comparar.columns.to_list():
         st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
     else:
-        # Encontrar filas con diferencias y marcar celdas con un asterisco
-        df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar)
+        # Encontrar diferencias
+        diferencias, resumen = encontrar_diferencias(df_base, df_comparar)
 
-        # Mostrar el DataFrame con filas que tienen diferencias
-        st.write("Información que tiene diferencias:")
-        st.table(df_diferencias.style.applymap(resaltar_diferencias))
+        # Mostrar resumen de diferencias
+        st.write("Resumen de diferencias por columna:")
+        st.table(pd.DataFrame.from_dict(resumen, orient='index', columns=['Número de Diferencias']))
 
-        # Botón para descargar la información en un archivo Excel con resaltado
-        if st.button("Descargar información en Excel con resaltado"):
-            # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
-            with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
-                # Escribir el DataFrame de diferencias en una pestaña
-                df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
+        # Mostrar detalles de las diferencias
+        for col, df_diff in diferencias.items():
+            if not df_diff.empty:
+                st.write(f"Diferencias en la columna '{col}':")
+                st.table(df_diff)
 
-                # Obtener el objeto Workbook para aplicar el formato
-                workbook = writer.book
-                sheet = workbook['Diferencias']
+        # Botón para descargar un archivo Excel con las diferencias
+        if st.button("Descargar información en Excel con diferencias"):
+            with pd.ExcelWriter("informacion_diferencias.xlsx", engine='openpyxl') as writer:
+                # Escribir el resumen de diferencias en una pestaña
+                pd.DataFrame.from_dict(resumen, orient='index', columns=['Número de Diferencias']).to_excel(writer, sheet_name='Resumen', index=True)
 
-                # Aplicar formato de resaltado a las celdas con diferencias
-                for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column)):
-                    for cell in row:
-                        if '*' in str(cell.value):
-                            cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
+                # Escribir cada columna con diferencias en su propia pestaña
+                for col, df_diff in diferencias.items():
+                    if not df_diff.empty:
+                        df_diff.to_excel(writer, sheet_name=col, index=True)
 
             # Enlace para descargar el archivo Excel
             st.markdown(
-                get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
+                get_binary_file_downloader_html("informacion_diferencias.xlsx", 'Archivo Excel con diferencias'),
                 unsafe_allow_html=True
             )
