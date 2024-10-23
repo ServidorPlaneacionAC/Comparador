@@ -1,26 +1,26 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import base64
-from openpyxl.styles import PatternFill
 
-# Función para encontrar diferencias y contar diferencias por columna
-def encontrar_diferencias(df_base, df_comparar):
-    diferencias = {}
-    resumen = {}
+# Función para encontrar diferencias basadas en una llave primaria
+def encontrar_diferencias(df_base, df_comparar, llave_primaria):
+    # Hacer merge de los DataFrames usando la llave primaria
+    merged_df = df_base.merge(df_comparar, on=llave_primaria, suffixes=('_base', '_comparar'), how='outer')
 
+    # Crear un DataFrame vacío para almacenar diferencias
+    diferencias = pd.DataFrame()
+
+    # Iterar sobre las columnas del DataFrame base
     for col in df_base.columns:
-        # Comparar cada columna
-        diffs = df_comparar[col] != df_base[col]
-        diferencias[col] = df_comparar[diffs].copy()
-        # Contar el número de diferencias
-        resumen[col] = diffs.sum()
-        
-        # Marcar diferencias en el DataFrame
-        diferencias[col]['Diferencia'] = 'Diferente'
-        diferencias[col].loc[differences[col].index, col] += '*'
+        if col != llave_primaria:  # Ignorar la llave primaria
+            # Comparar las columnas correspondientes
+            diffs = merged_df[f"{col}_base"] != merged_df[f"{col}_comparar"]
+            # Filtrar y almacenar las diferencias en el DataFrame
+            diffs_df = merged_df[diffs][[llave_primaria, f"{col}_base", f"{col}_comparar"]]
+            diffs_df.columns = [llave_primaria, f"{col}_base", f"{col}_comparar"]
+            diferencias = pd.concat([diferencias, diffs_df], ignore_index=True)
 
-    return diferencias, resumen
+    return diferencias
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -30,7 +30,7 @@ def get_binary_file_downloader_html(file_path, file_label='Archivo'):
         return f'<a href="data:application/octet-stream;base64,{base64_encoded}" download="{file_path}">{file_label}</a>'
 
 # Titulo
-st.title("Comparador de Datos Maestros Mejorado")
+st.title("Comparador de Datos Maestros")
 
 # Para subir el archivo base en Excel
 archivo_base = st.file_uploader("Cargar archivo base (base de datos)", type=["xlsx"])
@@ -43,36 +43,26 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
-    # Verificar si los DataFrames tienen las mismas columnas
-    if df_base.columns.to_list() != df_comparar.columns.to_list():
-        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
-    else:
-        # Encontrar diferencias
-        diferencias, resumen = encontrar_diferencias(df_base, df_comparar)
+    # Mostrar la lista de columnas para la selección de llave primaria
+    llave_primaria = st.selectbox("Selecciona la llave primaria para la comparación", df_base.columns.tolist())
 
-        # Mostrar resumen de diferencias
-        st.write("Resumen de diferencias por columna:")
-        st.table(pd.DataFrame.from_dict(resumen, orient='index', columns=['Número de Diferencias']))
+    # Encontrar diferencias
+    diferencias = encontrar_diferencias(df_base, df_comparar, llave_primaria)
 
-        # Mostrar detalles de las diferencias
-        for col, df_diff in diferencias.items():
-            if not df_diff.empty:
-                st.write(f"Diferencias en la columna '{col}':")
-                st.table(df_diff)
+    # Mostrar diferencias si existen
+    if not diferencias.empty:
+        st.write("Diferencias encontradas:")
+        st.table(diferencias)
 
         # Botón para descargar un archivo Excel con las diferencias
         if st.button("Descargar información en Excel con diferencias"):
-            with pd.ExcelWriter("informacion_diferencias.xlsx", engine='openpyxl') as writer:
-                # Escribir el resumen de diferencias en una pestaña
-                pd.DataFrame.from_dict(resumen, orient='index', columns=['Número de Diferencias']).to_excel(writer, sheet_name='Resumen', index=True)
-
-                # Escribir cada columna con diferencias en su propia pestaña
-                for col, df_diff in diferencias.items():
-                    if not df_diff.empty:
-                        df_diff.to_excel(writer, sheet_name=col, index=True)
+            # Guardar diferencias en un archivo Excel
+            diferencias.to_excel("diferencias.xlsx", index=False)
 
             # Enlace para descargar el archivo Excel
             st.markdown(
-                get_binary_file_downloader_html("informacion_diferencias.xlsx", 'Archivo Excel con diferencias'),
+                get_binary_file_downloader_html("diferencias.xlsx", 'Archivo Excel con diferencias'),
                 unsafe_allow_html=True
             )
+    else:
+        st.write("No se encontraron diferencias.")
