@@ -1,35 +1,36 @@
 import streamlit as st
 import pandas as pd
 import base64
-from openpyxl.styles import PatternFill
 
 # Tolerancia para la comparación de números decimales
 TOLERANCIA_DECIMAL = 1e-9
 
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
 def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
-    # Convertir a cadenas para evitar problemas de tipo de datos
+    # Convertir a cadenas para evitar problemas de tipo de datos en la clave
     df_base[clave] = df_base[clave].astype(str)
     df_comparar[clave] = df_comparar[clave].astype(str)
 
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', on=clave, indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
-        columns=['_merge'])
+    filas_nuevas = df_comparar.merge(df_base, how='outer', on=clave, indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(columns=['_merge'])
 
-    # Obtener el DataFrame con filas que tienen diferencias
+    # Crear un DataFrame para las diferencias
     df_diferencias = df_comparar[df_comparar[clave].isin(filas_nuevas[clave])].copy()
 
-    # Marcar las celdas con un asterisco solo donde la información no es igual al archivo base
+    # Marcar las celdas con un asterisco donde la información no es igual al archivo base
     for col in df_comparar.columns:
         if col == clave:  # No comparar la columna clave
             continue
-        if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
+        
+        # Comparar columnas según el tipo
+        if pd.api.types.is_numeric_dtype(df_comparar[col]):
+            # Comparar numéricamente con tolerancia
             df_diferencias[col] = df_diferencias.apply(
                 lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and abs(x[col] - df_base.loc[df_base[clave] == x[clave], col].values[0]) > TOLERANCIA_DECIMAL else x[col], axis=1)
         else:
-            # Comparar valores y manejar NaN
+            # Comparar como cadenas, considerando NaN
             df_diferencias[col] = df_diferencias.apply(
-                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and pd.notna(x[col]) and pd.notna(df_base.loc[df_base[clave] == x[clave], col].values[0]) and x[col] != df_base.loc[df_base[clave] == x[clave], col].values[0] else x[col], axis=1)
+                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and (pd.notna(x[col]) and pd.notna(df_base.loc[df_base[clave] == x[clave], col].values[0])) and str(x[col]).strip() != str(df_base.loc[df_base[clave] == x[clave], col].values[0]).strip() else x[col], axis=1)
 
     return df_diferencias
 
