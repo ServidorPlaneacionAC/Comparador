@@ -19,7 +19,8 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
     # Crear un DataFrame para las diferencias
     df_diferencias = df_merged[df_merged['_merge'] == 'both'].copy()
 
-    # Comparar las columnas y marcar las diferencias
+    # Crear un DataFrame solo con las diferencias
+    diferencias = {}
     for col in df_base.columns:
         if col == clave:
             continue
@@ -27,17 +28,23 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
         col_comparar = col + '_comparar'
         col_base = col + '_base'
         
-        # Crear una columna para las diferencias
-        df_diferencias[col + '_diferencia'] = df_diferencias.apply(
-            lambda x: f"{x[col_comparar]}*" if pd.notna(x[col_base]) and (
+        # Comparar y almacenar las diferencias
+        diferencias[col] = df_diferencias.apply(
+            lambda x: x[col_comparar] if pd.notna(x[col_base]) and (
                 (pd.api.types.is_numeric_dtype(df_base[col]) and abs(x[col_comparar] - x[col_base]) > TOLERANCIA_DECIMAL) or
                 (str(x[col_comparar]).strip() != str(x[col_base]).strip())
-            ) else x[col_comparar], axis=1
+            ) else None, axis=1
         )
-
-    # Seleccionar solo las columnas que queremos mostrar
-    columnas_a_mostrar = [clave] + [col + '_diferencia' for col in df_base.columns if col != clave]
-    return df_diferencias[columnas_a_mostrar]
+    
+    # Crear un DataFrame solo con la columna clave y las diferencias
+    df_resultado = pd.DataFrame({clave: df_diferencias[clave]})
+    for col, dif in diferencias.items():
+        df_resultado[col] = dif
+    
+    # Filtrar las filas donde hay diferencias
+    df_resultado = df_resultado.dropna(how='all', subset=df_resultado.columns[1:])
+    
+    return df_resultado
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
@@ -75,17 +82,10 @@ if archivo_base and archivo_comparar:
 
             # Mostrar el DataFrame con filas que tienen diferencias
             st.write("Información que tiene diferencias:")
-            # Modificar la visualización de las diferencias para mostrar un asterisco en rojo
-            df_diferencias_display = df_diferencias.copy()
-            for col in df_diferencias_display.columns[1:]:
-                df_diferencias_display[col] = df_diferencias_display[col].str.replace('*', '', regex=False)
-                df_diferencias_display[col] = df_diferencias_display[col].apply(lambda x: f"<span style='color: red;'>{x}*</span>" if '*' in x else x)
+            st.dataframe(df_diferencias)  # Muestra el DataFrame de diferencias
 
-            # Mostrar el DataFrame con HTML
-            st.markdown(df_diferencias_display.to_html(escape=False), unsafe_allow_html=True)
-
-# Botón para descargar la información en un archivo Excel con resaltado
-if st.button("Descargar información en Excel con resaltado"):
+# Botón para descargar la información en un archivo Excel
+if st.button("Descargar información en Excel"):
     # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
     with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
         # Escribir cada DataFrame en una pestaña diferente
@@ -93,6 +93,6 @@ if st.button("Descargar información en Excel con resaltado"):
 
     # Enlace para descargar el archivo Excel
     st.markdown(
-        get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
+        get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con diferencias'),
         unsafe_allow_html=True
     )
