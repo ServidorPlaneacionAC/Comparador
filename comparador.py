@@ -7,21 +7,29 @@ from openpyxl.styles import PatternFill
 TOLERANCIA_DECIMAL = 1e-9
 
 # Función para encontrar filas con diferencias y marcar las celdas con un asterisco
-def encontrar_filas_con_diferencias(df_base, df_comparar, columna_llave):
+def encontrar_filas_con_diferencias(df_base, df_comparar, clave):
+    # Convertir a cadenas para evitar problemas de tipo de datos
+    df_base[clave] = df_base[clave].astype(str)
+    df_comparar[clave] = df_comparar[clave].astype(str)
+
     # Identificar las filas que existen en el archivo a comparar pero no en la base de datos
-    filas_nuevas = df_comparar.merge(df_base, how='outer', indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
+    filas_nuevas = df_comparar.merge(df_base, how='outer', on=clave, indicator=True).loc[lambda x: x['_merge'] == 'left_only'].drop(
         columns=['_merge'])
 
     # Obtener el DataFrame con filas que tienen diferencias
-    df_diferencias = df_comparar[df_comparar[columna_llave].isin(filas_nuevas[columna_llave])].copy()
+    df_diferencias = df_comparar[df_comparar[clave].isin(filas_nuevas[clave])].copy()
 
     # Marcar las celdas con un asterisco solo donde la información no es igual al archivo base
     for col in df_comparar.columns:
-        # Comparar tipos de datos y manejar la igualdad numérica para tipos numéricos
+        if col == clave:  # No comparar la columna clave
+            continue
         if pd.api.types.is_numeric_dtype(df_comparar[col]) and pd.api.types.is_numeric_dtype(df_base[col]):
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x[columna_llave] in df_base[columna_llave].values and abs(x[col] - df_base[df_base[columna_llave] == x[columna_llave]].iloc[0][col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+            df_diferencias[col] = df_diferencias.apply(
+                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and abs(x[col] - df_base.loc[df_base[clave] == x[clave], col].values[0]) > TOLERANCIA_DECIMAL else x[col], axis=1)
         else:
-            df_diferencias[col] = df_diferencias.apply(lambda x: f"{x[col]}*" if x[columna_llave] in df_base[columna_llave].values and x[col] != df_base[df_base[columna_llave] == x[columna_llave]].iloc[0][col] else x[col], axis=1)
+            # Comparar valores y manejar NaN
+            df_diferencias[col] = df_diferencias.apply(
+                lambda x: f"{x[col]}*" if x[clave] in df_base[clave].values and pd.notna(x[col]) and pd.notna(df_base.loc[df_base[clave] == x[clave], col].values[0]) and x[col] != df_base.loc[df_base[clave] == x[clave], col].values[0] else x[col], axis=1)
 
     return df_diferencias
 
@@ -53,70 +61,35 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
-    # Verificar si los DataFrames son idénticos
-    if df_base.equals(df_comparar):
-        st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
-    elif df_base.columns.to_list() != df_comparar.columns.to_list():
-        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
-    else:
-        # Desplegable para seleccionar la columna llave
-        columna_llave = st.selectbox("Seleccione la columna que servirá como llave primaria:", df_base.columns.tolist())
+    # Mostrar el desplegable para seleccionar la columna clave
+    clave = st.selectbox("Selecciona la columna que servirá como llave primaria para la comparación:", df_base.columns)
 
-        # Verificar que se haya seleccionado una columna llave
-        if columna_llave:
+    if clave:
+        # Verificar si los DataFrames son idénticos
+        if df_base.equals(df_comparar):
+            st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
+        elif df_base.columns.to_list() != df_comparar.columns.to_list():
+            st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
+        else:
             # Encontrar filas con diferencias y marcar celdas con un asterisco
-            df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar, columna_llave)
-
-            # Encontrar filas faltantes en comparación al archivo base
-            df_faltantes = df_base.loc[~df_base[columna_llave].isin(df_comparar[columna_llave])]
-
-            # Encontrar filas en el archivo a comparar que no están en el archivo base
-            df_filas_en_comparar_no_en_base = df_comparar.loc[~df_comparar[columna_llave].isin(df_base[columna_llave])]
+            df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar, clave)
 
             # Mostrar el DataFrame con filas que tienen diferencias
             st.write("Información que tiene diferencias:")
             st.table(df_diferencias.style.applymap(resaltar_diferencias))
 
-            # Botón para mostrar las filas en el archivo base correspondientes a las diferencias
-            if st.button("Mostrar información del archivo base correspondiente a las diferencias"):
-                st.write("Información del archivo base correspondiente a las diferencias:")
-                # Filtrar el DataFrame base solo para las filas que tienen diferencias en el archivo a comparar
-                df_base_diferencias = df_base[df_base[columna_llave].isin(df_diferencias[columna_llave])].copy()
-                st.table(df_base_diferencias.style.applymap(resaltar_diferencias))
+            # Resto del código para mostrar información y descargar resultados...
+            # ...
 
-            # Botón para mostrar las filas en el archivo a comparar que no están en el archivo base
-            if st.button("Mostrar información nueva en comparar"):
-                st.write("Información en el archivo a comparar que no está en el archivo base:")
-                st.table(df_filas_en_comparar_no_en_base.style.applymap(resaltar_diferencias))
+# Botón para descargar la información en un archivo Excel con resaltado
+if st.button("Descargar información en Excel con resaltado"):
+    # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
+    with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
+        # Escribir cada DataFrame en una pestaña diferente
+        df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
 
-            # Botón para mostrar la información faltante en comparación al archivo base
-            if st.button("Mostrar información faltante en comparación al archivo base"):
-                st.write("Información faltante en comparación al archivo base:")
-                st.table(df_faltantes.style.applymap(resaltar_diferencias))
-
-            # Botón para descargar la información en un archivo Excel con resaltado
-            if st.button("Descargar información en Excel con resaltado"):
-                # Crear un objeto ExcelWriter para escribir en un solo archivo Excel
-                with pd.ExcelWriter("informacion_comparada.xlsx", engine='openpyxl') as writer:
-                    # Escribir cada DataFrame en una pestaña diferente
-                    df_diferencias.to_excel(writer, sheet_name='Diferencias', index=True)
-                    df_filas_en_comparar_no_en_base.to_excel(writer, sheet_name='Filas_en_comparar_no_en_base', index=True)
-                    df_faltantes.to_excel(writer, sheet_name='Faltantes_en_base', index=True)
-
-                    # Obtener el objeto ExcelWriter y el objeto Workbook para aplicar el formato
-                    workbook = writer.book
-                    sheet = workbook['Diferencias']
-
-                    # Aplicar formato de resaltado a las celdas con diferencias
-                    for idx, row in enumerate(sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=2, max_col=sheet.max_column)):
-                        for cell in row:
-                            if '*' in str(cell.value):
-                                cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
-
-                # Enlace para descargar el archivo Excel
-                st.markdown(
-                    get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
-                    unsafe_allow_html=True
-                )
-        else:
-            st.warning("Por favor, seleccione una columna llave antes de continuar.")
+    # Enlace para descargar el archivo Excel
+    st.markdown(
+        get_binary_file_downloader_html("informacion_comparada.xlsx", 'Archivo Excel con resaltado'),
+        unsafe_allow_html=True
+    )
