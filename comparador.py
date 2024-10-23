@@ -10,13 +10,24 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, llave_primaria):
     # Crear un DataFrame para almacenar las diferencias
     df_diferencias = df_comparar[[llave_primaria]].copy()
 
+    # Comparar cada columna
     for col in columnas_a_comparar:
-        # Comparar y omitir <NA> solo si ambos son <NA>
+        # Condición para encontrar diferencias
         df_diferencias[col] = df_comparar.apply(
-            lambda x: x[col] if (pd.notna(x[col]) and x[col] != '' and (x[llave_primaria] not in df_base[llave_primaria].values or (x[col] != df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0] if x[llave_primaria] in df_base[llave_primaria].values else True))) or (pd.isna(x[col]) and x[llave_primaria] in df_base[llave_primaria].values and pd.notna(df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0])) else None,
+            lambda x: x[col] if (
+                pd.notna(x[col]) or (
+                    pd.isna(x[col]) and (
+                        x[llave_primaria] in df_base[llave_primaria].values and
+                        pd.notna(df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0])
+                    )
+                )
+            ) and (
+                (x[llave_primaria] not in df_base[llave_primaria].values) or
+                (x[col] != df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0])
+            ) else None,
             axis=1
         )
-    
+
     # Filtrar para eliminar filas donde todas las comparaciones son None
     df_diferencias = df_diferencias.dropna(how='all', subset=columnas_a_comparar)
     
