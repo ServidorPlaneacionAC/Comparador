@@ -27,10 +27,14 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, columna_llave):
         if col in df_base_filtrado.columns:
             # Comparar valores numéricos con tolerancia
             if pd.api.types.is_numeric_dtype(df_comparar_filtrado[col]) and pd.api.types.is_numeric_dtype(df_base_filtrado[col]):
-                df_diferencias[col] = df_comparar_filtrado.apply(lambda x: f"{x[col]}*" if abs(x[col] - df_base_filtrado.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1)
+                df_diferencias[col] = df_comparar_filtrado.apply(
+                    lambda x: f"{x[col]}*" if pd.notna(x[col]) and pd.notna(df_base_filtrado.at[x.name, col]) and abs(x[col] - df_base_filtrado.at[x.name, col]) > TOLERANCIA_DECIMAL else x[col], axis=1
+                )
             else:
-                # Comparar valores no numéricos
-                df_diferencias[col] = df_comparar_filtrado.apply(lambda x: f"{x[col]}*" if x[col] != df_base_filtrado.at[x.name, col] else x[col], axis=1)
+                # Comparar valores no numéricos, manejando valores nulos
+                df_diferencias[col] = df_comparar_filtrado.apply(
+                    lambda x: f"{x[col]}*" if pd.notna(x[col]) and pd.notna(df_base_filtrado.at[x.name, col]) and x[col] != df_base_filtrado.at[x.name, col] else x[col], axis=1
+                )
 
     return df_diferencias
 
