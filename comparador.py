@@ -39,21 +39,25 @@ if archivo_base and archivo_comparar:
     # Seleccionar la columna clave para comparación
     llave_primaria = st.selectbox("Selecciona la columna llave primaria:", df_comparar.columns)
 
-    # Verificar si los DataFrames son idénticos
-    if df_base.equals(df_comparar):
-        st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
-    elif df_base.columns.to_list() != df_comparar.columns.to_list():
-        st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
+    # Verificar si la llave primaria está en ambos DataFrames
+    if llave_primaria not in df_base.columns or llave_primaria not in df_comparar.columns:
+        st.error("La columna seleccionada como llave primaria no se encuentra en ambos archivos.")
     else:
-        # Encontrar filas con diferencias y omitir None y espacios en blanco
-        df_diferencias = encontrar_filas_con_diferencias(df_base.set_index(llave_primaria), df_comparar.set_index(llave_primaria), llave_primaria)
-
-        # Mostrar el DataFrame con filas que tienen diferencias
-        if not df_diferencias.empty:
-            st.write("Información con diferencias:")
-            st.table(df_diferencias)
+        # Verificar si los DataFrames son idénticos
+        if df_base.equals(df_comparar):
+            st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
+        elif df_base.columns.to_list() != df_comparar.columns.to_list():
+            st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
         else:
-            st.write("No se encontraron diferencias significativas.")
+            # Encontrar filas con diferencias y omitir None y espacios en blanco
+            df_diferencias = encontrar_filas_con_diferencias(df_base.set_index(llave_primaria), df_comparar.set_index(llave_primaria), llave_primaria)
+
+            # Mostrar el DataFrame con filas que tienen diferencias
+            if not df_diferencias.empty:
+                st.write("Información con diferencias:")
+                st.table(df_diferencias)
+            else:
+                st.write("No se encontraron diferencias significativas.")
 
 # Función para generar un enlace de descarga de un archivo binario
 def get_binary_file_downloader_html(file_path, file_label='Archivo'):
