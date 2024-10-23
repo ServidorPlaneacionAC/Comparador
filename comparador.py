@@ -6,7 +6,7 @@ import base64
 def encontrar_filas_con_diferencias(df_base, df_comparar, llave_primaria):
     # Comparar solo las columnas que no son la llave primaria
     columnas_a_comparar = df_comparar.columns.difference([llave_primaria])
-    
+
     # Crear un DataFrame para almacenar las diferencias
     df_diferencias = df_comparar[[llave_primaria]].copy()
 
@@ -36,6 +36,10 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
+    # Limpiar los nombres de las columnas
+    df_base.columns = df_base.columns.str.strip()
+    df_comparar.columns = df_comparar.columns.str.strip()
+
     # Mostrar información de los DataFrames
     st.write("DataFrame Base:")
     st.write(df_base)
@@ -51,12 +55,18 @@ if archivo_base and archivo_comparar:
     elif llave_primaria not in df_comparar.columns:
         st.error(f"La columna '{llave_primaria}' no se encuentra en el archivo a comparar.")
     else:
+        st.write(f"La llave primaria seleccionada es: {llave_primaria}")
+
         # Verificar si los DataFrames son idénticos
         if df_base.equals(df_comparar):
             st.error("Los archivos son idénticos. No hay diferencias para resaltar.")
         elif df_base.columns.to_list() != df_comparar.columns.to_list():
             st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
         else:
+            # Imprimir información sobre los índices
+            st.write(f"Índices del DataFrame base: {df_base.index.tolist()}")
+            st.write(f"Índices del DataFrame a comparar: {df_comparar.index.tolist()}")
+
             # Encontrar filas con diferencias y omitir None y espacios en blanco
             df_diferencias = encontrar_filas_con_diferencias(df_base.set_index(llave_primaria), df_comparar.set_index(llave_primaria), llave_primaria)
 
