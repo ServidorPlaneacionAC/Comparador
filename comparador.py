@@ -95,7 +95,7 @@ if archivo_base and archivo_comparar:
 
                 # Mostrar el DataFrame con filas que tienen diferencias
                 st.write("Información que tiene diferencias:")
-                st.table(df_diferencias.style.applymap(resaltar_diferencias))
+                st.dataframe(df_diferencias.style.applymap(resaltar_diferencias))
 
                 # Botón para descargar la información en un archivo Excel con resaltado
                 if st.button("Descargar información en Excel con resaltado"):
