@@ -36,12 +36,20 @@ if archivo_base and archivo_comparar:
     df_base = pd.read_excel(archivo_base)
     df_comparar = pd.read_excel(archivo_comparar)
 
+    # Mostrar información de los DataFrames
+    st.write("DataFrame Base:")
+    st.write(df_base)
+    st.write("DataFrame a Comparar:")
+    st.write(df_comparar)
+
     # Seleccionar la columna clave para comparación
     llave_primaria = st.selectbox("Selecciona la columna llave primaria:", df_comparar.columns)
 
     # Verificar si la llave primaria está en ambos DataFrames
-    if llave_primaria not in df_base.columns or llave_primaria not in df_comparar.columns:
-        st.error("La columna seleccionada como llave primaria no se encuentra en ambos archivos.")
+    if llave_primaria not in df_base.columns:
+        st.error(f"La columna '{llave_primaria}' no se encuentra en el archivo base.")
+    elif llave_primaria not in df_comparar.columns:
+        st.error(f"La columna '{llave_primaria}' no se encuentra en el archivo a comparar.")
     else:
         # Verificar si los DataFrames son idénticos
         if df_base.equals(df_comparar):
