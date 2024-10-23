@@ -11,9 +11,9 @@ def encontrar_filas_con_diferencias(df_base, df_comparar, llave_primaria):
     df_diferencias = df_comparar[[llave_primaria]].copy()
 
     for col in columnas_a_comparar:
-        # Comparar solo si ambos valores no son None o espacios en blanco
+        # Comparar y omitir <NA> solo si ambos son <NA>
         df_diferencias[col] = df_comparar.apply(
-            lambda x: x[col] if pd.notna(x[col]) and x[col] != '' and (x[llave_primaria] not in df_base[llave_primaria].values or (x[col] != df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0] if x[llave_primaria] in df_base[llave_primaria].values else True)) else None,
+            lambda x: x[col] if (pd.notna(x[col]) and x[col] != '' and (x[llave_primaria] not in df_base[llave_primaria].values or (x[col] != df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0] if x[llave_primaria] in df_base[llave_primaria].values else True))) or (pd.isna(x[col]) and x[llave_primaria] in df_base[llave_primaria].values and pd.notna(df_base.loc[df_base[llave_primaria] == x[llave_primaria], col].values[0])) else None,
             axis=1
         )
     
@@ -63,7 +63,7 @@ if archivo_base and archivo_comparar:
         elif df_base.columns.to_list() != df_comparar.columns.to_list():
             st.error("Los archivos no tienen las mismas columnas. Asegúrate de cargar archivos con las mismas columnas.")
         else:
-            # Encontrar filas con diferencias y omitir None y espacios en blanco
+            # Encontrar filas con diferencias y omitir <NA>
             df_diferencias = encontrar_filas_con_diferencias(df_base, df_comparar, llave_primaria)
 
             # Mostrar el DataFrame con filas que tienen diferencias
